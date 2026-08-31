@@ -1,0 +1,29 @@
+{
+  "name": "@open-erp/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint . --write",
+    "test": "bun test",
+    "generate": "drizzle-kit generate",
+    "migrate": "bun run src/migrate.ts",
+    "studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.35.3",
+    "postgres": "^3.4.5",
+    "@open-erp/config": "workspace:*"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "drizzle-kit": "^0.27.2",
+    "typescript": "^5.6.3"
+  }
+}
