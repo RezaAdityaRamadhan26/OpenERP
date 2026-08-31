@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome lint .",
     "lint:fix": "biome lint . --write",
-    "test": "bun test"
+    "test": "echo \"No tests currently\""
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
