@@ -73,7 +73,7 @@ export class OrganizationService {
   }
 
   // ---------------------------------------------------------------------------
-  // Branch Use Cases
+  // Branch Use Cases (strictly company scoped)
   // ---------------------------------------------------------------------------
 
   async createBranch(data: CreateScopedEntityData): Promise<Branch> {
@@ -104,8 +104,8 @@ export class OrganizationService {
     });
   }
 
-  async getBranchById(id: string): Promise<Branch> {
-    const branch = await this.repository.findBranchById(id);
+  async getBranchById(companyId: string, id: string): Promise<Branch> {
+    const branch = await this.repository.findBranchById(companyId, id);
     if (!branch) {
       throw new OrganizationNotFoundError('Branch', id);
     }
@@ -120,19 +120,19 @@ export class OrganizationService {
     return this.repository.listBranches(companyId, options);
   }
 
-  async updateBranch(id: string, data: UpdateScopedEntityData): Promise<Branch> {
-    await this.getBranchById(id);
+  async updateBranch(companyId: string, id: string, data: UpdateScopedEntityData): Promise<Branch> {
+    await this.getBranchById(companyId, id);
     if (data.name !== undefined && !data.name.trim()) {
       throw new OrganizationValidationError('Branch name cannot be empty');
     }
-    return this.repository.updateBranch(id, {
+    return this.repository.updateBranch(companyId, id, {
       ...data,
       name: data.name?.trim(),
     });
   }
 
   // ---------------------------------------------------------------------------
-  // Department Use Cases
+  // Department Use Cases (strictly company scoped)
   // ---------------------------------------------------------------------------
 
   async createDepartment(data: CreateScopedEntityData): Promise<Department> {
@@ -163,8 +163,8 @@ export class OrganizationService {
     });
   }
 
-  async getDepartmentById(id: string): Promise<Department> {
-    const department = await this.repository.findDepartmentById(id);
+  async getDepartmentById(companyId: string, id: string): Promise<Department> {
+    const department = await this.repository.findDepartmentById(companyId, id);
     if (!department) {
       throw new OrganizationNotFoundError('Department', id);
     }
@@ -179,19 +179,19 @@ export class OrganizationService {
     return this.repository.listDepartments(companyId, options);
   }
 
-  async updateDepartment(id: string, data: UpdateScopedEntityData): Promise<Department> {
-    await this.getDepartmentById(id);
+  async updateDepartment(companyId: string, id: string, data: UpdateScopedEntityData): Promise<Department> {
+    await this.getDepartmentById(companyId, id);
     if (data.name !== undefined && !data.name.trim()) {
       throw new OrganizationValidationError('Department name cannot be empty');
     }
-    return this.repository.updateDepartment(id, {
+    return this.repository.updateDepartment(companyId, id, {
       ...data,
       name: data.name?.trim(),
     });
   }
 
   // ---------------------------------------------------------------------------
-  // Cost Center Use Cases
+  // Cost Center Use Cases (strictly company scoped)
   // ---------------------------------------------------------------------------
 
   async createCostCenter(data: CreateScopedEntityData): Promise<CostCenter> {
@@ -222,8 +222,8 @@ export class OrganizationService {
     });
   }
 
-  async getCostCenterById(id: string): Promise<CostCenter> {
-    const costCenter = await this.repository.findCostCenterById(id);
+  async getCostCenterById(companyId: string, id: string): Promise<CostCenter> {
+    const costCenter = await this.repository.findCostCenterById(companyId, id);
     if (!costCenter) {
       throw new OrganizationNotFoundError('CostCenter', id);
     }
@@ -238,12 +238,12 @@ export class OrganizationService {
     return this.repository.listCostCenters(companyId, options);
   }
 
-  async updateCostCenter(id: string, data: UpdateScopedEntityData): Promise<CostCenter> {
-    await this.getCostCenterById(id);
+  async updateCostCenter(companyId: string, id: string, data: UpdateScopedEntityData): Promise<CostCenter> {
+    await this.getCostCenterById(companyId, id);
     if (data.name !== undefined && !data.name.trim()) {
       throw new OrganizationValidationError('Cost Center name cannot be empty');
     }
-    return this.repository.updateCostCenter(id, {
+    return this.repository.updateCostCenter(companyId, id, {
       ...data,
       name: data.name?.trim(),
     });

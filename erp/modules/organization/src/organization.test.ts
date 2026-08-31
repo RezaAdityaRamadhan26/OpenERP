@@ -88,8 +88,11 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
     return item;
   }
 
-  async findBranchById(id: string): Promise<Branch | null> {
-    return this.branches.find((b) => b.id === id) ?? null;
+  async findBranchById(companyId: string, id: string): Promise<Branch | null> {
+    return (
+      this.branches.find((b) => b.companyId === companyId && b.id === id) ??
+      null
+    );
   }
 
   async findBranchByCode(
@@ -116,10 +119,13 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
   }
 
   async updateBranch(
+    companyId: string,
     id: string,
     data: UpdateScopedEntityData,
   ): Promise<Branch> {
-    const existing = this.branches.find((b) => b.id === id);
+    const existing = this.branches.find(
+      (b) => b.companyId === companyId && b.id === id,
+    );
     if (!existing) throw new OrganizationNotFoundError('Branch', id);
     const updated: Branch = {
       ...existing,
@@ -127,7 +133,9 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
       isActive: data.isActive ?? existing.isActive,
       updatedAt: new Date(),
     };
-    const idx = this.branches.findIndex((b) => b.id === id);
+    const idx = this.branches.findIndex(
+      (b) => b.companyId === companyId && b.id === id,
+    );
     this.branches[idx] = updated;
     return updated;
   }
@@ -146,8 +154,15 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
     return item;
   }
 
-  async findDepartmentById(id: string): Promise<Department | null> {
-    return this.departments.find((d) => d.id === id) ?? null;
+  async findDepartmentById(
+    companyId: string,
+    id: string,
+  ): Promise<Department | null> {
+    return (
+      this.departments.find(
+        (d) => d.companyId === companyId && d.id === id,
+      ) ?? null
+    );
   }
 
   async findDepartmentByCode(
@@ -174,10 +189,13 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
   }
 
   async updateDepartment(
+    companyId: string,
     id: string,
     data: UpdateScopedEntityData,
   ): Promise<Department> {
-    const existing = this.departments.find((d) => d.id === id);
+    const existing = this.departments.find(
+      (d) => d.companyId === companyId && d.id === id,
+    );
     if (!existing) throw new OrganizationNotFoundError('Department', id);
     const updated: Department = {
       ...existing,
@@ -185,7 +203,9 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
       isActive: data.isActive ?? existing.isActive,
       updatedAt: new Date(),
     };
-    const idx = this.departments.findIndex((d) => d.id === id);
+    const idx = this.departments.findIndex(
+      (d) => d.companyId === companyId && d.id === id,
+    );
     this.departments[idx] = updated;
     return updated;
   }
@@ -204,8 +224,15 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
     return item;
   }
 
-  async findCostCenterById(id: string): Promise<CostCenter | null> {
-    return this.costCenters.find((c) => c.id === id) ?? null;
+  async findCostCenterById(
+    companyId: string,
+    id: string,
+  ): Promise<CostCenter | null> {
+    return (
+      this.costCenters.find(
+        (c) => c.companyId === companyId && c.id === id,
+      ) ?? null
+    );
   }
 
   async findCostCenterByCode(
@@ -232,10 +259,13 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
   }
 
   async updateCostCenter(
+    companyId: string,
     id: string,
     data: UpdateScopedEntityData,
   ): Promise<CostCenter> {
-    const existing = this.costCenters.find((c) => c.id === id);
+    const existing = this.costCenters.find(
+      (c) => c.companyId === companyId && c.id === id,
+    );
     if (!existing) throw new OrganizationNotFoundError('CostCenter', id);
     const updated: CostCenter = {
       ...existing,
@@ -243,7 +273,9 @@ class InMemoryOrganizationRepository implements OrganizationRepository {
       isActive: data.isActive ?? existing.isActive,
       updatedAt: new Date(),
     };
-    const idx = this.costCenters.findIndex((c) => c.id === id);
+    const idx = this.costCenters.findIndex(
+      (c) => c.companyId === companyId && c.id === id,
+    );
     this.costCenters[idx] = updated;
     return updated;
   }
@@ -345,45 +377,95 @@ describe('OrganizationService (Application Use Cases)', () => {
     const branchesComp1 = await service.listBranches(comp1.id);
     expect(branchesComp1.total).toBe(1);
     expect(branchesComp1.items[0]?.id).toBe(b1.id);
+
+    // Cross company get fails
+    await expect(
+      service.getBranchById(comp2.id, b1.id),
+    ).rejects.toBeInstanceOf(OrganizationNotFoundError);
+
+    // Scoped get succeeds
+    const foundBranch = await service.getBranchById(comp1.id, b1.id);
+    expect(foundBranch.id).toBe(b1.id);
+
+    // Scoped update succeeds
+    const updatedBranch = await service.updateBranch(comp1.id, b1.id, {
+      name: 'Updated HQ',
+    });
+    expect(updatedBranch.name).toBe('Updated HQ');
+
+    // Cross-company update fails
+    await expect(
+      service.updateBranch(comp2.id, b1.id, { name: 'Hacked HQ' }),
+    ).rejects.toBeInstanceOf(OrganizationNotFoundError);
   });
 
   test('Department & Cost Center scoping and validation', async () => {
     repo = new InMemoryOrganizationRepository();
     service = new OrganizationService(repo);
 
-    const comp = await service.createCompany({
-      code: 'CORP',
-      name: 'Corporation',
+    const comp1 = await service.createCompany({
+      code: 'CORP1',
+      name: 'Corporation 1',
+    });
+    const comp2 = await service.createCompany({
+      code: 'CORP2',
+      name: 'Corporation 2',
     });
 
     // Department
     const dept = await service.createDepartment({
-      companyId: comp.id,
+      companyId: comp1.id,
       code: 'eng',
       name: 'Engineering',
     });
     expect(dept.code).toBe('ENG');
     await expect(
       service.createDepartment({
-        companyId: comp.id,
+        companyId: comp1.id,
         code: 'ENG',
         name: 'Engineering 2',
       }),
     ).rejects.toBeInstanceOf(DuplicateCodeError);
 
+    // Cross company department get/update
+    await expect(
+      service.getDepartmentById(comp2.id, dept.id),
+    ).rejects.toBeInstanceOf(OrganizationNotFoundError);
+    await expect(
+      service.updateDepartment(comp2.id, dept.id, { name: 'Other Eng' }),
+    ).rejects.toBeInstanceOf(OrganizationNotFoundError);
+
+    const updatedDept = await service.updateDepartment(comp1.id, dept.id, {
+      name: 'Software Eng',
+    });
+    expect(updatedDept.name).toBe('Software Eng');
+
     // Cost Center
     const cc = await service.createCostCenter({
-      companyId: comp.id,
+      companyId: comp1.id,
       code: 'cc-100',
       name: 'R&D Cost Center',
     });
     expect(cc.code).toBe('CC-100');
     await expect(
       service.createCostCenter({
-        companyId: comp.id,
+        companyId: comp1.id,
         code: 'CC-100',
         name: 'Duplicate CC',
       }),
     ).rejects.toBeInstanceOf(DuplicateCodeError);
+
+    // Cross company cost center get/update
+    await expect(
+      service.getCostCenterById(comp2.id, cc.id),
+    ).rejects.toBeInstanceOf(OrganizationNotFoundError);
+    await expect(
+      service.updateCostCenter(comp2.id, cc.id, { name: 'Other CC' }),
+    ).rejects.toBeInstanceOf(OrganizationNotFoundError);
+
+    const updatedCc = await service.updateCostCenter(comp1.id, cc.id, {
+      name: 'Research & Dev',
+    });
+    expect(updatedCc.name).toBe('Research & Dev');
   });
 });

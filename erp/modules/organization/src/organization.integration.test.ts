@@ -1,9 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
+import { inArray } from 'drizzle-orm';
 import * as schema from '@open-erp/db/schema';
 import {
+  DuplicateCodeError,
   DrizzleOrganizationRepository,
+  InvalidParentCompanyError,
+  OrganizationNotFoundError,
   OrganizationService,
 } from '@open-erp/organization';
 
@@ -17,6 +21,7 @@ describeWithDb('PostgreSQL Organization Integration Tests', () => {
   let db: ReturnType<typeof drizzle<typeof schema>>;
   let repo: DrizzleOrganizationRepository;
   let service: OrganizationService;
+  const createdCompanyIds: string[] = [];
 
   beforeAll(async () => {
     if (!testDbUrl) return;
@@ -28,55 +33,127 @@ describeWithDb('PostgreSQL Organization Integration Tests', () => {
 
   afterAll(async () => {
     if (client) {
+      if (createdCompanyIds.length > 0) {
+        // Deterministic cleanup
+        await db
+          .delete(schema.branches)
+          .where(inArray(schema.branches.company_id, createdCompanyIds));
+        await db
+          .delete(schema.departments)
+          .where(inArray(schema.departments.company_id, createdCompanyIds));
+        await db
+          .delete(schema.costCenters)
+          .where(inArray(schema.costCenters.company_id, createdCompanyIds));
+        await db
+          .delete(schema.companies)
+          .where(inArray(schema.companies.id, createdCompanyIds));
+      }
       await client.end();
     }
   });
 
-  test('creates company, branch, department, cost center in real PostgreSQL', async () => {
-    const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
-    const companyCode = `COMP_${randomSuffix}`;
+  test('enforces scoped unique constraints, FK rejection, cross-company access rejection and inactive filtering', async () => {
+    const timestamp = Date.now().toString().slice(-6);
+    const codeA = `CMP_A_${timestamp}`;
+    const codeB = `CMP_B_${timestamp}`;
 
-    // 1. Create Company
-    const company = await service.createCompany({
-      code: companyCode,
-      name: `Test Company ${randomSuffix}`,
+    // 1. Create two separate companies
+    const compA = await service.createCompany({
+      code: codeA,
+      name: `Company A ${timestamp}`,
     });
-    expect(company.id).toBeDefined();
-    expect(company.code).toBe(companyCode);
-
-    // 2. Create Branch
-    const branch = await service.createBranch({
-      companyId: company.id,
-      code: `BR_${randomSuffix}`,
-      name: 'Main Branch',
+    const compB = await service.createCompany({
+      code: codeB,
+      name: `Company B ${timestamp}`,
     });
-    expect(branch.id).toBeDefined();
-    expect(branch.companyId).toBe(company.id);
+    createdCompanyIds.push(compA.id, compB.id);
 
-    // 3. Create Department
-    const department = await service.createDepartment({
-      companyId: company.id,
-      code: `DEP_${randomSuffix}`,
-      name: 'Finance',
+    // 2. FK Rejection: creating branch on non-existent parent company
+    const fakeCompanyId = '00000000-0000-0000-0000-000000000999';
+    await expect(
+      service.createBranch({
+        companyId: fakeCompanyId,
+        code: 'BR_FAIL',
+        name: 'Fail Branch',
+      }),
+    ).rejects.toBeInstanceOf(InvalidParentCompanyError);
+
+    // 3. Scoped unique constraint:
+    // Create branch with same code 'HQ' on Company A and Company B
+    const branchA = await service.createBranch({
+      companyId: compA.id,
+      code: 'HQ',
+      name: 'Company A HQ',
     });
-    expect(department.id).toBeDefined();
+    expect(branchA.companyId).toBe(compA.id);
 
-    // 4. Create Cost Center
-    const costCenter = await service.createCostCenter({
-      companyId: company.id,
-      code: `CC_${randomSuffix}`,
-      name: 'Operations CC',
+    const branchB = await service.createBranch({
+      companyId: compB.id,
+      code: 'HQ',
+      name: 'Company B HQ',
     });
-    expect(costCenter.id).toBeDefined();
+    expect(branchB.companyId).toBe(compB.id);
 
-    // 5. Scoped listings
-    const branchList = await service.listBranches(company.id);
-    expect(branchList.total).toBeGreaterThanOrEqual(1);
+    // Duplicate branch code in SAME company must fail
+    await expect(
+      service.createBranch({
+        companyId: compA.id,
+        code: 'HQ',
+        name: 'Duplicate A HQ',
+      }),
+    ).rejects.toBeInstanceOf(DuplicateCodeError);
 
-    const deptList = await service.listDepartments(company.id);
-    expect(deptList.total).toBeGreaterThanOrEqual(1);
+    // 4. Cross-company access rejection on get & update
+    // Attempt to get Company A's branch using Company B's ID
+    await expect(
+      service.getBranchById(compB.id, branchA.id),
+    ).rejects.toBeInstanceOf(OrganizationNotFoundError);
 
-    const ccList = await service.listCostCenters(company.id);
-    expect(ccList.total).toBeGreaterThanOrEqual(1);
+    // Attempt to update Company A's branch under Company B scope
+    await expect(
+      service.updateBranch(compB.id, branchA.id, { name: 'Comp B overwrite' }),
+    ).rejects.toBeInstanceOf(OrganizationNotFoundError);
+
+    // Scoped get & update on Company A succeeds
+    const foundBranchA = await service.getBranchById(compA.id, branchA.id);
+    expect(foundBranchA.id).toBe(branchA.id);
+    const updatedBranchA = await service.updateBranch(compA.id, branchA.id, {
+      name: 'Company A HQ Updated',
+    });
+    expect(updatedBranchA.name).toBe('Company A HQ Updated');
+
+    // 5. Department & Cost Center cross-company scoping
+    const deptA = await service.createDepartment({
+      companyId: compA.id,
+      code: 'IT',
+      name: 'IT Department',
+    });
+    const ccA = await service.createCostCenter({
+      companyId: compA.id,
+      code: 'CC_IT',
+      name: 'IT Cost Center',
+    });
+
+    await expect(
+      service.getDepartmentById(compB.id, deptA.id),
+    ).rejects.toBeInstanceOf(OrganizationNotFoundError);
+    await expect(
+      service.getCostCenterById(compB.id, ccA.id),
+    ).rejects.toBeInstanceOf(OrganizationNotFoundError);
+
+    // 6. Inactive retrieval vs active listing filter
+    await service.updateBranch(compA.id, branchA.id, { isActive: false });
+
+    // Active listing excludes branchA
+    const activeList = await service.listBranches(compA.id, {
+      includeInactive: false,
+    });
+    expect(activeList.items.find((b) => b.id === branchA.id)).toBeUndefined();
+
+    // Listing with includeInactive includes branchA
+    const allList = await service.listBranches(compA.id, {
+      includeInactive: true,
+    });
+    expect(allList.items.find((b) => b.id === branchA.id)).toBeDefined();
   });
 });

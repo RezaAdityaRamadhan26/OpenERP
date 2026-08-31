@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome lint .",
     "lint:fix": "biome lint . --write",
-    "test": "bun test"
+    "test": "bun test",
+    "test:integration": "bun test src/organization.integration.test.ts"
   },
   "dependencies": {
     "hono": "^4.6.12",

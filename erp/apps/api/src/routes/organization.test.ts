@@ -74,8 +74,11 @@ class MockOrganizationRepository implements OrganizationRepository {
     return item;
   }
 
-  async findBranchById(id: string): Promise<Branch | null> {
-    return this.branches.find((b) => b.id === id) ?? null;
+  async findBranchById(companyId: string, id: string): Promise<Branch | null> {
+    return (
+      this.branches.find((b) => b.companyId === companyId && b.id === id) ??
+      null
+    );
   }
 
   async findBranchByCode(
@@ -98,10 +101,13 @@ class MockOrganizationRepository implements OrganizationRepository {
   }
 
   async updateBranch(
+    companyId: string,
     id: string,
     data: UpdateScopedEntityData,
   ): Promise<Branch> {
-    const existing = this.branches.find((b) => b.id === id);
+    const existing = this.branches.find(
+      (b) => b.companyId === companyId && b.id === id,
+    );
     if (!existing) throw new Error('Not found');
     return {
       ...existing,
@@ -124,8 +130,14 @@ class MockOrganizationRepository implements OrganizationRepository {
     return item;
   }
 
-  async findDepartmentById(id: string): Promise<Department | null> {
-    return this.departments.find((d) => d.id === id) ?? null;
+  async findDepartmentById(
+    companyId: string,
+    id: string,
+  ): Promise<Department | null> {
+    return (
+      this.departments.find((d) => d.companyId === companyId && d.id === id) ??
+      null
+    );
   }
 
   async findDepartmentByCode(
@@ -148,10 +160,13 @@ class MockOrganizationRepository implements OrganizationRepository {
   }
 
   async updateDepartment(
+    companyId: string,
     id: string,
     data: UpdateScopedEntityData,
   ): Promise<Department> {
-    const existing = this.departments.find((d) => d.id === id);
+    const existing = this.departments.find(
+      (d) => d.companyId === companyId && d.id === id,
+    );
     if (!existing) throw new Error('Not found');
     return {
       ...existing,
@@ -174,8 +189,14 @@ class MockOrganizationRepository implements OrganizationRepository {
     return item;
   }
 
-  async findCostCenterById(id: string): Promise<CostCenter | null> {
-    return this.costCenters.find((c) => c.id === id) ?? null;
+  async findCostCenterById(
+    companyId: string,
+    id: string,
+  ): Promise<CostCenter | null> {
+    return (
+      this.costCenters.find((c) => c.companyId === companyId && c.id === id) ??
+      null
+    );
   }
 
   async findCostCenterByCode(
@@ -198,10 +219,13 @@ class MockOrganizationRepository implements OrganizationRepository {
   }
 
   async updateCostCenter(
+    companyId: string,
     id: string,
     data: UpdateScopedEntityData,
   ): Promise<CostCenter> {
-    const existing = this.costCenters.find((c) => c.id === id);
+    const existing = this.costCenters.find(
+      (c) => c.companyId === companyId && c.id === id,
+    );
     if (!existing) throw new Error('Not found');
     return {
       ...existing,
@@ -310,14 +334,20 @@ describe('Organization API Routes', () => {
     expect(json.error.code).toBe('INVALID_PARENT_COMPANY');
   });
 
-  test('GET /api/v1/branches/:id - returns branch or 404', async () => {
+  test('GET /api/v1/companies/:companyId/branches/:id - returns branch or 404', async () => {
     const res = await app.request(
-      '/api/v1/branches/00000000-0000-0000-0000-000000000002',
+      '/api/v1/companies/00000000-0000-0000-0000-000000000001/branches/00000000-0000-0000-0000-000000000002',
     );
     expect(res.status).toBe(200);
 
+    // Cross-company access returns 404
+    const crossCompany = await app.request(
+      '/api/v1/companies/00000000-0000-0000-0000-000000000999/branches/00000000-0000-0000-0000-000000000002',
+    );
+    expect(crossCompany.status).toBe(404);
+
     const notFound = await app.request(
-      '/api/v1/branches/00000000-0000-0000-0000-000000000999',
+      '/api/v1/companies/00000000-0000-0000-0000-000000000001/branches/00000000-0000-0000-0000-000000000999',
     );
     expect(notFound.status).toBe(404);
   });

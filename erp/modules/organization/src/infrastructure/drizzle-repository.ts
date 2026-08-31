@@ -112,7 +112,7 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
   }
 
   // ---------------------------------------------------------------------------
-  // Branch
+  // Branch (scoped by companyId and id)
   // ---------------------------------------------------------------------------
 
   async createBranch(data: CreateScopedEntityData): Promise<Branch> {
@@ -133,11 +133,16 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
     return this.mapBranch(row);
   }
 
-  async findBranchById(id: string): Promise<Branch | null> {
+  async findBranchById(companyId: string, id: string): Promise<Branch | null> {
     const [row] = await this.db
       .select()
       .from(schema.branches)
-      .where(eq(schema.branches.id, id))
+      .where(
+        and(
+          eq(schema.branches.company_id, companyId),
+          eq(schema.branches.id, id),
+        ),
+      )
       .limit(1);
 
     return row ? this.mapBranch(row) : null;
@@ -195,6 +200,7 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
   }
 
   async updateBranch(
+    companyId: string,
     id: string,
     data: UpdateScopedEntityData,
   ): Promise<Branch> {
@@ -208,7 +214,12 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
     const [row] = await this.db
       .update(schema.branches)
       .set(updateValues)
-      .where(eq(schema.branches.id, id))
+      .where(
+        and(
+          eq(schema.branches.company_id, companyId),
+          eq(schema.branches.id, id),
+        ),
+      )
       .returning();
 
     if (!row) {
@@ -219,7 +230,7 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
   }
 
   // ---------------------------------------------------------------------------
-  // Department
+  // Department (scoped by companyId and id)
   // ---------------------------------------------------------------------------
 
   async createDepartment(data: CreateScopedEntityData): Promise<Department> {
@@ -240,11 +251,19 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
     return this.mapDepartment(row);
   }
 
-  async findDepartmentById(id: string): Promise<Department | null> {
+  async findDepartmentById(
+    companyId: string,
+    id: string,
+  ): Promise<Department | null> {
     const [row] = await this.db
       .select()
       .from(schema.departments)
-      .where(eq(schema.departments.id, id))
+      .where(
+        and(
+          eq(schema.departments.company_id, companyId),
+          eq(schema.departments.id, id),
+        ),
+      )
       .limit(1);
 
     return row ? this.mapDepartment(row) : null;
@@ -302,6 +321,7 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
   }
 
   async updateDepartment(
+    companyId: string,
     id: string,
     data: UpdateScopedEntityData,
   ): Promise<Department> {
@@ -315,7 +335,12 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
     const [row] = await this.db
       .update(schema.departments)
       .set(updateValues)
-      .where(eq(schema.departments.id, id))
+      .where(
+        and(
+          eq(schema.departments.company_id, companyId),
+          eq(schema.departments.id, id),
+        ),
+      )
       .returning();
 
     if (!row) {
@@ -326,7 +351,7 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
   }
 
   // ---------------------------------------------------------------------------
-  // Cost Center
+  // Cost Center (scoped by companyId and id)
   // ---------------------------------------------------------------------------
 
   async createCostCenter(data: CreateScopedEntityData): Promise<CostCenter> {
@@ -347,11 +372,19 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
     return this.mapCostCenter(row);
   }
 
-  async findCostCenterById(id: string): Promise<CostCenter | null> {
+  async findCostCenterById(
+    companyId: string,
+    id: string,
+  ): Promise<CostCenter | null> {
     const [row] = await this.db
       .select()
       .from(schema.costCenters)
-      .where(eq(schema.costCenters.id, id))
+      .where(
+        and(
+          eq(schema.costCenters.company_id, companyId),
+          eq(schema.costCenters.id, id),
+        ),
+      )
       .limit(1);
 
     return row ? this.mapCostCenter(row) : null;
@@ -409,6 +442,7 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
   }
 
   async updateCostCenter(
+    companyId: string,
     id: string,
     data: UpdateScopedEntityData,
   ): Promise<CostCenter> {
@@ -422,7 +456,12 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
     const [row] = await this.db
       .update(schema.costCenters)
       .set(updateValues)
-      .where(eq(schema.costCenters.id, id))
+      .where(
+        and(
+          eq(schema.costCenters.company_id, companyId),
+          eq(schema.costCenters.id, id),
+        ),
+      )
       .returning();
 
     if (!row) {

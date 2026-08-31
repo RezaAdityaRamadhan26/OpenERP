@@ -102,7 +102,7 @@ export function createOrganizationRouter(service: OrganizationService) {
   });
 
   // ---------------------------------------------------------------------------
-  // Branches (scoped to Company)
+  // Branches (strictly scoped to Company: /companies/:companyId/branches/:id)
   // ---------------------------------------------------------------------------
 
   router.post('/companies/:companyId/branches', async (c) => {
@@ -136,10 +136,11 @@ export function createOrganizationRouter(service: OrganizationService) {
     }
   });
 
-  router.get('/branches/:id', async (c) => {
+  router.get('/companies/:companyId/branches/:id', async (c) => {
     try {
+      const companyId = c.req.param('companyId');
       const id = c.req.param('id');
-      const branch = await service.getBranchById(id);
+      const branch = await service.getBranchById(companyId, id);
       return c.json({ success: true, data: branch });
     } catch (err) {
       const mapped = handleError(err);
@@ -150,12 +151,13 @@ export function createOrganizationRouter(service: OrganizationService) {
     }
   });
 
-  router.patch('/branches/:id', async (c) => {
+  router.patch('/companies/:companyId/branches/:id', async (c) => {
     try {
+      const companyId = c.req.param('companyId');
       const id = c.req.param('id');
       const body = await c.req.json();
       const parsed = updateScopedEntitySchema.parse(body);
-      const branch = await service.updateBranch(id, parsed);
+      const branch = await service.updateBranch(companyId, id, parsed);
       return c.json({ success: true, data: branch });
     } catch (err) {
       const mapped = handleError(err);
@@ -167,7 +169,7 @@ export function createOrganizationRouter(service: OrganizationService) {
   });
 
   // ---------------------------------------------------------------------------
-  // Departments (scoped to Company)
+  // Departments (strictly scoped to Company: /companies/:companyId/departments/:id)
   // ---------------------------------------------------------------------------
 
   router.post('/companies/:companyId/departments', async (c) => {
@@ -204,10 +206,11 @@ export function createOrganizationRouter(service: OrganizationService) {
     }
   });
 
-  router.get('/departments/:id', async (c) => {
+  router.get('/companies/:companyId/departments/:id', async (c) => {
     try {
+      const companyId = c.req.param('companyId');
       const id = c.req.param('id');
-      const department = await service.getDepartmentById(id);
+      const department = await service.getDepartmentById(companyId, id);
       return c.json({ success: true, data: department });
     } catch (err) {
       const mapped = handleError(err);
@@ -218,12 +221,13 @@ export function createOrganizationRouter(service: OrganizationService) {
     }
   });
 
-  router.patch('/departments/:id', async (c) => {
+  router.patch('/companies/:companyId/departments/:id', async (c) => {
     try {
+      const companyId = c.req.param('companyId');
       const id = c.req.param('id');
       const body = await c.req.json();
       const parsed = updateScopedEntitySchema.parse(body);
-      const department = await service.updateDepartment(id, parsed);
+      const department = await service.updateDepartment(companyId, id, parsed);
       return c.json({ success: true, data: department });
     } catch (err) {
       const mapped = handleError(err);
@@ -235,7 +239,7 @@ export function createOrganizationRouter(service: OrganizationService) {
   });
 
   // ---------------------------------------------------------------------------
-  // Cost Centers (scoped to Company)
+  // Cost Centers (strictly scoped to Company: /companies/:companyId/cost-centers/:id)
   // ---------------------------------------------------------------------------
 
   router.post('/companies/:companyId/cost-centers', async (c) => {
@@ -272,10 +276,11 @@ export function createOrganizationRouter(service: OrganizationService) {
     }
   });
 
-  router.get('/cost-centers/:id', async (c) => {
+  router.get('/companies/:companyId/cost-centers/:id', async (c) => {
     try {
+      const companyId = c.req.param('companyId');
       const id = c.req.param('id');
-      const costCenter = await service.getCostCenterById(id);
+      const costCenter = await service.getCostCenterById(companyId, id);
       return c.json({ success: true, data: costCenter });
     } catch (err) {
       const mapped = handleError(err);
@@ -286,12 +291,13 @@ export function createOrganizationRouter(service: OrganizationService) {
     }
   });
 
-  router.patch('/cost-centers/:id', async (c) => {
+  router.patch('/companies/:companyId/cost-centers/:id', async (c) => {
     try {
+      const companyId = c.req.param('companyId');
       const id = c.req.param('id');
       const body = await c.req.json();
       const parsed = updateScopedEntitySchema.parse(body);
-      const costCenter = await service.updateCostCenter(id, parsed);
+      const costCenter = await service.updateCostCenter(companyId, id, parsed);
       return c.json({ success: true, data: costCenter });
     } catch (err) {
       const mapped = handleError(err);

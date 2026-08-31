@@ -37,24 +37,24 @@ export interface OrganizationRepository {
   listCompanies(options?: ListOptions): Promise<{ items: Company[]; total: number }>;
   updateCompany(id: string, data: UpdateCompanyData): Promise<Company>;
 
-  // Branch
+  // Branch (strictly company-scoped)
   createBranch(data: CreateScopedEntityData): Promise<Branch>;
-  findBranchById(id: string): Promise<Branch | null>;
+  findBranchById(companyId: string, id: string): Promise<Branch | null>;
   findBranchByCode(companyId: string, code: string): Promise<Branch | null>;
   listBranches(companyId: string, options?: ListOptions): Promise<{ items: Branch[]; total: number }>;
-  updateBranch(id: string, data: UpdateScopedEntityData): Promise<Branch>;
+  updateBranch(companyId: string, id: string, data: UpdateScopedEntityData): Promise<Branch>;
 
-  // Department
+  // Department (strictly company-scoped)
   createDepartment(data: CreateScopedEntityData): Promise<Department>;
-  findDepartmentById(id: string): Promise<Department | null>;
+  findDepartmentById(companyId: string, id: string): Promise<Department | null>;
   findDepartmentByCode(companyId: string, code: string): Promise<Department | null>;
   listDepartments(companyId: string, options?: ListOptions): Promise<{ items: Department[]; total: number }>;
-  updateDepartment(id: string, data: UpdateScopedEntityData): Promise<Department>;
+  updateDepartment(companyId: string, id: string, data: UpdateScopedEntityData): Promise<Department>;
 
-  // Cost Center
+  // Cost Center (strictly company-scoped)
   createCostCenter(data: CreateScopedEntityData): Promise<CostCenter>;
-  findCostCenterById(id: string): Promise<CostCenter | null>;
+  findCostCenterById(companyId: string, id: string): Promise<CostCenter | null>;
   findCostCenterByCode(companyId: string, code: string): Promise<CostCenter | null>;
   listCostCenters(companyId: string, options?: ListOptions): Promise<{ items: CostCenter[]; total: number }>;
-  updateCostCenter(id: string, data: UpdateScopedEntityData): Promise<CostCenter>;
+  updateCostCenter(companyId: string, id: string, data: UpdateScopedEntityData): Promise<CostCenter>;
 }
