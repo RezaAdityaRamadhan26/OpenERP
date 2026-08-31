@@ -37,10 +37,10 @@ export const companies = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    uniqueIndex('companies_code_unique_idx').on(table.code),
-    index('companies_is_active_idx').on(table.is_active),
-  ],
+  (table) => ({
+    codeUnique: uniqueIndex('companies_code_unique_idx').on(table.code),
+    activeIndex: index('companies_is_active_idx').on(table.is_active),
+  }),
 );
 
 /**
@@ -63,14 +63,14 @@ export const branches = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    uniqueIndex('branches_company_code_unique_idx').on(
+  (table) => ({
+    companyCodeUnique: uniqueIndex('branches_company_code_unique_idx').on(
       table.company_id,
       table.code,
     ),
-    index('branches_company_id_idx').on(table.company_id),
-    index('branches_is_active_idx').on(table.is_active),
-  ],
+    companyIndex: index('branches_company_id_idx').on(table.company_id),
+    activeIndex: index('branches_is_active_idx').on(table.is_active),
+  }),
 );
 
 /**
@@ -93,14 +93,14 @@ export const departments = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    uniqueIndex('departments_company_code_unique_idx').on(
+  (table) => ({
+    companyCodeUnique: uniqueIndex('departments_company_code_unique_idx').on(
       table.company_id,
       table.code,
     ),
-    index('departments_company_id_idx').on(table.company_id),
-    index('departments_is_active_idx').on(table.is_active),
-  ],
+    companyIndex: index('departments_company_id_idx').on(table.company_id),
+    activeIndex: index('departments_is_active_idx').on(table.is_active),
+  }),
 );
 
 /**
@@ -123,12 +123,12 @@ export const costCenters = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    uniqueIndex('cost_centers_company_code_unique_idx').on(
+  (table) => ({
+    companyCodeUnique: uniqueIndex('cost_centers_company_code_unique_idx').on(
       table.company_id,
       table.code,
     ),
-    index('cost_centers_company_id_idx').on(table.company_id),
-    index('cost_centers_is_active_idx').on(table.is_active),
-  ],
+    companyIndex: index('cost_centers_company_id_idx').on(table.company_id),
+    activeIndex: index('cost_centers_is_active_idx').on(table.is_active),
+  }),
 );

@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import {
   useCompanies,
   useCostCenters,
   useCreateCostCenter,
-  useDepartments,
   useToggleCostCenterActive,
   useUpdateCostCenter,
 } from './hooks.js';
 import type { CostCenter } from './types.js';
-import { type CostCenterFormData, costCenterSchema } from './validation.js';
+import { type ScopedEntityFormData, scopedEntitySchema } from './validation.js';
 
 export function CostCentersPage() {
   const { data: companies } = useCompanies();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
 
-  const effectiveCompanyId = selectedCompanyId || (companies && companies[0]?.id) || '';
+  const effectiveCompanyId = selectedCompanyId || companies?.[0]?.id || '';
 
   const {
     data: costCenters,
@@ -22,20 +22,15 @@ export function CostCentersPage() {
     error,
     refetch,
   } = useCostCenters(effectiveCompanyId || undefined);
-  const { data: departments } = useDepartments(effectiveCompanyId || undefined);
-
   const createMutation = useCreateCostCenter();
   const updateMutation = useUpdateCostCenter();
   const toggleActiveMutation = useToggleCostCenterActive();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCostCenter, setEditingCostCenter] = useState<CostCenter | null>(null);
-  const [formData, setFormData] = useState<CostCenterFormData>({
-    company_id: '',
-    department_id: '',
+  const [formData, setFormData] = useState<ScopedEntityFormData>({
     code: '',
     name: '',
-    is_active: true,
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -44,11 +39,8 @@ export function CostCentersPage() {
   const openCreateModal = () => {
     setEditingCostCenter(null);
     setFormData({
-      company_id: effectiveCompanyId,
-      department_id: '',
       code: '',
       name: '',
-      is_active: true,
     });
     setFieldErrors({});
     setGeneralError(null);
@@ -58,11 +50,8 @@ export function CostCentersPage() {
   const openEditModal = (cc: CostCenter) => {
     setEditingCostCenter(cc);
     setFormData({
-      company_id: cc.company_id,
-      department_id: cc.department_id || '',
       code: cc.code,
       name: cc.name,
-      is_active: cc.is_active,
     });
     setFieldErrors({});
     setGeneralError(null);
@@ -81,7 +70,7 @@ export function CostCentersPage() {
     setGeneralError(null);
     setFieldErrors({});
 
-    const parseResult = costCenterSchema.safeParse(formData);
+    const parseResult = scopedEntitySchema.safeParse(formData);
     if (!parseResult.success) {
       const errors: Record<string, string> = {};
       for (const issue of parseResult.error.issues) {
@@ -97,22 +86,18 @@ export function CostCentersPage() {
     try {
       if (editingCostCenter) {
         await updateMutation.mutateAsync({
+          companyId: effectiveCompanyId,
           id: editingCostCenter.id,
           input: {
-            company_id: parseResult.data.company_id,
-            department_id: parseResult.data.department_id || null,
             name: parseResult.data.name,
-            is_active: parseResult.data.is_active,
           },
         });
         setActionSuccess(`Cost center "${parseResult.data.name}" updated successfully.`);
       } else {
         await createMutation.mutateAsync({
-          company_id: parseResult.data.company_id,
-          department_id: parseResult.data.department_id || null,
+          companyId: effectiveCompanyId,
           code: parseResult.data.code,
           name: parseResult.data.name,
-          is_active: parseResult.data.is_active,
         });
         setActionSuccess(`Cost center "${parseResult.data.name}" created successfully.`);
       }
@@ -126,10 +111,11 @@ export function CostCentersPage() {
   const handleToggleActive = async (cc: CostCenter) => {
     try {
       await toggleActiveMutation.mutateAsync({
+        companyId: effectiveCompanyId,
         id: cc.id,
-        is_active: !cc.is_active,
+        input: { isActive: !cc.isActive }
       });
-      setActionSuccess(`Cost center "${cc.name}" ${cc.is_active ? 'deactivated' : 'activated'}.`);
+      setActionSuccess(`Cost center "${cc.name}" ${cc.isActive ? 'deactivated' : 'activated'}.`);
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Toggle active state failed');
@@ -244,23 +230,22 @@ export function CostCentersPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {costCenters.map((cc) => {
-                  const dept = departments?.find((d) => d.id === cc.department_id);
                   return (
                     <tr key={cc.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 font-mono font-medium text-slate-900">{cc.code}</td>
                       <td className="px-4 py-3 font-medium text-slate-900">{cc.name}</td>
                       <td className="px-4 py-3 text-slate-600">
-                        {dept ? dept.name : <span className="text-slate-400">General Company</span>}
+                        <span className="text-slate-400">General Company</span>
                       </td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            cc.is_active
+                            cc.isActive
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : 'bg-slate-100 text-slate-600 border border-slate-200'
                           }`}
                         >
-                          {cc.is_active ? 'Active' : 'Inactive'}
+                          {cc.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
@@ -277,7 +262,7 @@ export function CostCentersPage() {
                           disabled={toggleActiveMutation.isPending}
                           className="text-xs font-medium text-slate-500 hover:text-slate-700 underline disabled:opacity-50"
                         >
-                          {cc.is_active ? 'Deactivate' : 'Activate'}
+                          {cc.isActive ? 'Deactivate' : 'Activate'}
                         </button>
                       </td>
                     </tr>
@@ -316,47 +301,6 @@ export function CostCentersPage() {
               )}
 
               <div>
-                <label htmlFor="cc-form-company" className="block text-xs font-medium text-slate-700 mb-1">
-                  Company *
-                </label>
-                <select
-                  id="cc-form-company"
-                  value={formData.company_id}
-                  onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
-                  disabled={Boolean(editingCostCenter)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 disabled:bg-slate-50"
-                >
-                  {companies?.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.code})
-                    </option>
-                  ))}
-                </select>
-                {fieldErrors.company_id && (
-                  <p className="text-xs text-red-600 mt-1">{fieldErrors.company_id}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="cc-form-dept" className="block text-xs font-medium text-slate-700 mb-1">
-                  Department (Optional)
-                </label>
-                <select
-                  id="cc-form-dept"
-                  value={formData.department_id || ''}
-                  onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
-                >
-                  <option value="">(General Company Level)</option>
-                  {departments?.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
                 <label htmlFor="cc-form-code" className="block text-xs font-medium text-slate-700 mb-1">
                   Cost Center Code *
                 </label>
@@ -389,19 +333,6 @@ export function CostCentersPage() {
                 {fieldErrors.name && (
                   <p className="text-xs text-red-600 mt-1">{fieldErrors.name}</p>
                 )}
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="cc_active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
-                />
-                <label htmlFor="cc_active" className="text-xs text-slate-700">
-                  Active cost center status
-                </label>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">

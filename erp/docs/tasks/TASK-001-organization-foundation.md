@@ -43,10 +43,17 @@ Implement the backend organization foundation: PostgreSQL Drizzle database schem
   - Export public use cases, types, and route factory.
 
 ### 3. API Integration (`apps/api`)
-- Mount organization routes onto `/api/v1/organizations` or resource sub-paths (`/api/v1/companies`, `/api/v1/companies/:companyId/branches`, etc.).
+- Mount organization routes under `/api/v1`, using `/companies` and explicit company-scoped child resources such as `/companies/:companyId/branches`.
 - Maintain `/api/v1/health` and centralized error handling.
+- Endpoints are temporarily unauthenticated until IAM is implemented in TASK-002; they must not be exposed publicly before server-side authorization exists.
 
-### 4. Testing
+### 4. Minimal Web UI (`apps/web`)
+- Provide focused management screens for Companies, Branches, Departments, and Cost Centers.
+- Include loading, empty, error, validation, success, and duplicate-submission states.
+- Require explicit company selection for child resources.
+- Do not implement role-based UI before TASK-002.
+
+### 5. Testing
 - Deterministic unit/application tests for use cases and repository contracts (using mock or in-memory repository).
 - API route tests testing validation, error mapping, and happy paths with mocked application/repository layer.
 - PostgreSQL integration tests running against real database only when `TEST_DATABASE_URL` is set, gracefully skipped otherwise.

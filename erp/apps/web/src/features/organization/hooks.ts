@@ -11,214 +11,141 @@ import type {
   UpdateDepartmentInput,
 } from './types.js';
 
-export const organizationKeys = {
-  all: ['organization'] as const,
-  companies: () => [...organizationKeys.all, 'companies'] as const,
-  company: (id: string) => [...organizationKeys.companies(), id] as const,
-  branches: (companyId?: string) => [...organizationKeys.all, 'branches', { companyId }] as const,
-  branch: (id: string) => [...organizationKeys.all, 'branches', id] as const,
-  departments: (companyId?: string) => [...organizationKeys.all, 'departments', { companyId }] as const,
-  department: (id: string) => [...organizationKeys.all, 'departments', id] as const,
-  costCenters: (companyId?: string) => [...organizationKeys.all, 'costCenters', { companyId }] as const,
-  costCenter: (id: string) => [...organizationKeys.all, 'costCenters', id] as const,
-};
+const allKey = ['organization'] as const;
+const companiesKey = [...allKey, 'companies'] as const;
+const scopedKey = (resource: string, companyId: string) => [...allKey, resource, companyId] as const;
 
-// Companies hooks
 export function useCompanies() {
-  return useQuery({
-    queryKey: organizationKeys.companies(),
-    queryFn: organizationApi.getCompanies,
-  });
-}
-
-export function useCompany(id: string) {
-  return useQuery({
-    queryKey: organizationKeys.company(id),
-    queryFn: () => organizationApi.getCompany(id),
-    enabled: Boolean(id),
-  });
+  return useQuery({ queryKey: companiesKey, queryFn: organizationApi.getCompanies });
 }
 
 export function useCreateCompany() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateCompanyInput) => organizationApi.createCompany(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: organizationKeys.companies() });
-    },
+    onSuccess: () => client.invalidateQueries({ queryKey: companiesKey }),
   });
 }
 
 export function useUpdateCompany() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateCompanyInput }) =>
       organizationApi.updateCompany(id, input),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: organizationKeys.companies() });
-      queryClient.invalidateQueries({ queryKey: organizationKeys.company(variables.id) });
-    },
+    onSuccess: () => client.invalidateQueries({ queryKey: companiesKey }),
   });
 }
 
 export function useToggleCompanyActive() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      organizationApi.toggleCompanyActive(id, is_active),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: organizationKeys.companies() });
-      queryClient.invalidateQueries({ queryKey: organizationKeys.company(variables.id) });
-    },
+    mutationFn: ({ id, input }: { id: string; input: { isActive: boolean } }) =>
+      organizationApi.updateCompany(id, input),
+    onSuccess: () => client.invalidateQueries({ queryKey: companiesKey }),
   });
 }
 
-// Branches hooks
 export function useBranches(companyId?: string) {
+  const scopedCompanyId = companyId ?? '';
   return useQuery({
-    queryKey: organizationKeys.branches(companyId),
-    queryFn: () => organizationApi.getBranches(companyId),
-  });
-}
-
-export function useBranch(id: string) {
-  return useQuery({
-    queryKey: organizationKeys.branch(id),
-    queryFn: () => organizationApi.getBranch(id),
-    enabled: Boolean(id),
+    queryKey: scopedKey('branches', scopedCompanyId),
+    queryFn: () => organizationApi.getBranches(scopedCompanyId),
+    enabled: Boolean(scopedCompanyId),
   });
 }
 
 export function useCreateBranch() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateBranchInput) => organizationApi.createBranch(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...organizationKeys.all, 'branches'] });
-    },
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: scopedKey('branches', input.companyId) }),
   });
 }
 
 export function useUpdateBranch() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateBranchInput }) =>
-      organizationApi.updateBranch(id, input),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [...organizationKeys.all, 'branches'] });
-      queryClient.invalidateQueries({ queryKey: organizationKeys.branch(variables.id) });
-    },
+    mutationFn: ({ companyId, id, input }: { companyId: string; id: string; input: UpdateBranchInput }) =>
+      organizationApi.updateBranch(companyId, id, input),
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: scopedKey('branches', input.companyId) }),
   });
 }
 
 export function useToggleBranchActive() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      organizationApi.toggleBranchActive(id, is_active),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [...organizationKeys.all, 'branches'] });
-      queryClient.invalidateQueries({ queryKey: organizationKeys.branch(variables.id) });
-    },
+    mutationFn: ({ companyId, id, input }: { companyId: string; id: string; input: { isActive: boolean } }) =>
+      organizationApi.updateBranch(companyId, id, input),
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: scopedKey('branches', input.companyId) }),
   });
 }
 
-// Departments hooks
 export function useDepartments(companyId?: string) {
+  const scopedCompanyId = companyId ?? '';
   return useQuery({
-    queryKey: organizationKeys.departments(companyId),
-    queryFn: () => organizationApi.getDepartments(companyId),
-  });
-}
-
-export function useDepartment(id: string) {
-  return useQuery({
-    queryKey: organizationKeys.department(id),
-    queryFn: () => organizationApi.getDepartment(id),
-    enabled: Boolean(id),
+    queryKey: scopedKey('departments', scopedCompanyId),
+    queryFn: () => organizationApi.getDepartments(scopedCompanyId),
+    enabled: Boolean(scopedCompanyId),
   });
 }
 
 export function useCreateDepartment() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateDepartmentInput) => organizationApi.createDepartment(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...organizationKeys.all, 'departments'] });
-    },
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: scopedKey('departments', input.companyId) }),
   });
 }
 
 export function useUpdateDepartment() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateDepartmentInput }) =>
-      organizationApi.updateDepartment(id, input),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [...organizationKeys.all, 'departments'] });
-      queryClient.invalidateQueries({ queryKey: organizationKeys.department(variables.id) });
-    },
+    mutationFn: ({ companyId, id, input }: { companyId: string; id: string; input: UpdateDepartmentInput }) =>
+      organizationApi.updateDepartment(companyId, id, input),
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: scopedKey('departments', input.companyId) }),
   });
 }
 
 export function useToggleDepartmentActive() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      organizationApi.toggleDepartmentActive(id, is_active),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [...organizationKeys.all, 'departments'] });
-      queryClient.invalidateQueries({ queryKey: organizationKeys.department(variables.id) });
-    },
+    mutationFn: ({ companyId, id, input }: { companyId: string; id: string; input: { isActive: boolean } }) =>
+      organizationApi.updateDepartment(companyId, id, input),
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: scopedKey('departments', input.companyId) }),
   });
 }
 
-// Cost Centers hooks
 export function useCostCenters(companyId?: string) {
+  const scopedCompanyId = companyId ?? '';
   return useQuery({
-    queryKey: organizationKeys.costCenters(companyId),
-    queryFn: () => organizationApi.getCostCenters(companyId),
-  });
-}
-
-export function useCostCenter(id: string) {
-  return useQuery({
-    queryKey: organizationKeys.costCenter(id),
-    queryFn: () => organizationApi.getCostCenter(id),
-    enabled: Boolean(id),
+    queryKey: scopedKey('cost-centers', scopedCompanyId),
+    queryFn: () => organizationApi.getCostCenters(scopedCompanyId),
+    enabled: Boolean(scopedCompanyId),
   });
 }
 
 export function useCreateCostCenter() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateCostCenterInput) => organizationApi.createCostCenter(input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...organizationKeys.all, 'costCenters'] });
-    },
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: scopedKey('cost-centers', input.companyId) }),
   });
 }
 
 export function useUpdateCostCenter() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateCostCenterInput }) =>
-      organizationApi.updateCostCenter(id, input),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [...organizationKeys.all, 'costCenters'] });
-      queryClient.invalidateQueries({ queryKey: organizationKeys.costCenter(variables.id) });
-    },
+    mutationFn: ({ companyId, id, input }: { companyId: string; id: string; input: UpdateCostCenterInput }) =>
+      organizationApi.updateCostCenter(companyId, id, input),
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: scopedKey('cost-centers', input.companyId) }),
   });
 }
 
 export function useToggleCostCenterActive() {
-  const queryClient = useQueryClient();
+  const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      organizationApi.toggleCostCenterActive(id, is_active),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [...organizationKeys.all, 'costCenters'] });
-      queryClient.invalidateQueries({ queryKey: organizationKeys.costCenter(variables.id) });
-    },
+    mutationFn: ({ companyId, id, input }: { companyId: string; id: string; input: { isActive: boolean } }) =>
+      organizationApi.updateCostCenter(companyId, id, input),
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: scopedKey('cost-centers', input.companyId) }),
   });
 }

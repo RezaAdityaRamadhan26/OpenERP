@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import {
   useBranches,
   useCompanies,
@@ -7,13 +8,13 @@ import {
   useUpdateBranch,
 } from './hooks.js';
 import type { Branch } from './types.js';
-import { type BranchFormData, branchSchema } from './validation.js';
+import { type ScopedEntityFormData, scopedEntitySchema } from './validation.js';
 
 export function BranchesPage() {
   const { data: companies } = useCompanies();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
 
-  const effectiveCompanyId = selectedCompanyId || (companies && companies[0]?.id) || '';
+  const effectiveCompanyId = selectedCompanyId || companies?.[0]?.id || '';
 
   const {
     data: branches,
@@ -21,20 +22,16 @@ export function BranchesPage() {
     error,
     refetch,
   } = useBranches(effectiveCompanyId || undefined);
+
   const createMutation = useCreateBranch();
   const updateMutation = useUpdateBranch();
   const toggleActiveMutation = useToggleBranchActive();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
-  const [formData, setFormData] = useState<BranchFormData>({
-    company_id: '',
+  const [formData, setFormData] = useState<ScopedEntityFormData>({
     code: '',
     name: '',
-    address: '',
-    phone: '',
-    email: '',
-    is_active: true,
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -43,13 +40,8 @@ export function BranchesPage() {
   const openCreateModal = () => {
     setEditingBranch(null);
     setFormData({
-      company_id: effectiveCompanyId,
       code: '',
       name: '',
-      address: '',
-      phone: '',
-      email: '',
-      is_active: true,
     });
     setFieldErrors({});
     setGeneralError(null);
@@ -59,13 +51,8 @@ export function BranchesPage() {
   const openEditModal = (branch: Branch) => {
     setEditingBranch(branch);
     setFormData({
-      company_id: branch.company_id,
       code: branch.code,
       name: branch.name,
-      address: branch.address || '',
-      phone: branch.phone || '',
-      email: branch.email || '',
-      is_active: branch.is_active,
     });
     setFieldErrors({});
     setGeneralError(null);
@@ -84,7 +71,7 @@ export function BranchesPage() {
     setGeneralError(null);
     setFieldErrors({});
 
-    const parseResult = branchSchema.safeParse(formData);
+    const parseResult = scopedEntitySchema.safeParse(formData);
     if (!parseResult.success) {
       const errors: Record<string, string> = {};
       for (const issue of parseResult.error.issues) {
@@ -100,26 +87,18 @@ export function BranchesPage() {
     try {
       if (editingBranch) {
         await updateMutation.mutateAsync({
+          companyId: effectiveCompanyId,
           id: editingBranch.id,
           input: {
-            company_id: parseResult.data.company_id,
             name: parseResult.data.name,
-            address: parseResult.data.address || null,
-            phone: parseResult.data.phone || null,
-            email: parseResult.data.email || null,
-            is_active: parseResult.data.is_active,
           },
         });
         setActionSuccess(`Branch "${parseResult.data.name}" updated successfully.`);
       } else {
         await createMutation.mutateAsync({
-          company_id: parseResult.data.company_id,
+          companyId: effectiveCompanyId,
           code: parseResult.data.code,
           name: parseResult.data.name,
-          address: parseResult.data.address || null,
-          phone: parseResult.data.phone || null,
-          email: parseResult.data.email || null,
-          is_active: parseResult.data.is_active,
         });
         setActionSuccess(`Branch "${parseResult.data.name}" created successfully.`);
       }
@@ -133,11 +112,12 @@ export function BranchesPage() {
   const handleToggleActive = async (branch: Branch) => {
     try {
       await toggleActiveMutation.mutateAsync({
+        companyId: effectiveCompanyId,
         id: branch.id,
-        is_active: !branch.is_active,
+        input: { isActive: !branch.isActive }
       });
       setActionSuccess(
-        `Branch "${branch.name}" ${branch.is_active ? 'deactivated' : 'activated'}.`,
+        `Branch "${branch.name}" ${branch.isActive ? 'deactivated' : 'activated'}.`,
       );
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: unknown) {
@@ -246,7 +226,6 @@ export function BranchesPage() {
                 <tr>
                   <th className="px-4 py-3">Code</th>
                   <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Contact</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -257,22 +236,16 @@ export function BranchesPage() {
                     <td className="px-4 py-3 font-mono font-medium text-slate-900">{b.code}</td>
                     <td className="px-4 py-3 font-medium text-slate-900">
                       <div>{b.name}</div>
-                      {b.address && <div className="text-xs text-slate-400">{b.address}</div>}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">
-                      {b.phone && <div>Tel: {b.phone}</div>}
-                      {b.email && <div>Email: {b.email}</div>}
-                      {!b.phone && !b.email && <span className="text-slate-400">-</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          b.is_active
+                          b.isActive
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}
                       >
-                        {b.is_active ? 'Active' : 'Inactive'}
+                        {b.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right space-x-2">
@@ -289,7 +262,7 @@ export function BranchesPage() {
                         disabled={toggleActiveMutation.isPending}
                         className="text-xs font-medium text-slate-500 hover:text-slate-700 underline disabled:opacity-50"
                       >
-                        {b.is_active ? 'Deactivate' : 'Activate'}
+                        {b.isActive ? 'Deactivate' : 'Activate'}
                       </button>
                     </td>
                   </tr>
@@ -325,28 +298,6 @@ export function BranchesPage() {
               )}
 
               <div>
-                <label htmlFor="branch-form-company" className="block text-xs font-medium text-slate-700 mb-1">
-                  Company *
-                </label>
-                <select
-                  id="branch-form-company"
-                  value={formData.company_id}
-                  onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
-                  disabled={Boolean(editingBranch)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 disabled:bg-slate-50"
-                >
-                  {companies?.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.code})
-                    </option>
-                  ))}
-                </select>
-                {fieldErrors.company_id && (
-                  <p className="text-xs text-red-600 mt-1">{fieldErrors.company_id}</p>
-                )}
-              </div>
-
-              <div>
                 <label htmlFor="branch-form-code" className="block text-xs font-medium text-slate-700 mb-1">
                   Branch Code *
                 </label>
@@ -379,72 +330,6 @@ export function BranchesPage() {
                 {fieldErrors.name && (
                   <p className="text-xs text-red-600 mt-1">{fieldErrors.name}</p>
                 )}
-              </div>
-
-              <div>
-                <label htmlFor="branch-form-address" className="block text-xs font-medium text-slate-700 mb-1">
-                  Address
-                </label>
-                <textarea
-                  id="branch-form-address"
-                  rows={2}
-                  value={formData.address || ''}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  placeholder="Street address, city, postal code"
-                />
-                {fieldErrors.address && (
-                  <p className="text-xs text-red-600 mt-1">{fieldErrors.address}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="branch-form-phone" className="block text-xs font-medium text-slate-700 mb-1">
-                    Phone
-                  </label>
-                  <input
-                    id="branch-form-phone"
-                    type="text"
-                    value={formData.phone || ''}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
-                    placeholder="e.g. +62 21 555-0123"
-                  />
-                  {fieldErrors.phone && (
-                    <p className="text-xs text-red-600 mt-1">{fieldErrors.phone}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="branch-form-email" className="block text-xs font-medium text-slate-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    id="branch-form-email"
-                    type="email"
-                    value={formData.email || ''}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
-                    placeholder="branch@example.com"
-                  />
-                  {fieldErrors.email && (
-                    <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="branch_active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
-                />
-                <label htmlFor="branch_active" className="text-xs text-slate-700">
-                  Active branch status
-                </label>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">

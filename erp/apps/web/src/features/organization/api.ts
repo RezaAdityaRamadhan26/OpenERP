@@ -14,146 +14,138 @@ import type {
   UpdateDepartmentInput,
 } from './types.js';
 
-const API_BASE = '/api/v1/organization';
+interface ListResult<T> {
+  items: T[];
+  total: number;
+}
 
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    let errorMsg = `Request failed: ${res.statusText} (${res.status})`;
-    try {
-      const errJson = await res.json();
-      if (errJson && errJson.error?.message) {
-        errorMsg = errJson.error.message;
-      }
-    } catch {
-      // JSON parse failed, use fallback errorMsg
-    }
-    throw new Error(errorMsg);
+const API_BASE = '/api/v1';
+
+async function handleResponse<T>(response: Response): Promise<T> {
+  const body = (await response.json()) as ApiResponse<T> | {
+    success: false;
+    error: { message: string };
+  };
+
+  if (!response.ok || !body.success) {
+    throw new Error(body.success ? `Request failed: ${response.status}` : body.error.message);
   }
 
-  const json: ApiResponse<T> = await res.json();
-  if (!json.success) {
-    throw new Error('API returned unsuccesful response');
-  }
-  return json.data;
+  return body.data;
+}
+
+function companyPath(companyId: string, resource: string): string {
+  return `${API_BASE}/companies/${encodeURIComponent(companyId)}/${resource}`;
 }
 
 export const organizationApi = {
-  // Companies
   getCompanies: async (): Promise<Company[]> => {
-    const res = await fetch(`${API_BASE}/companies`);
-    return handleResponse<Company[]>(res);
+    const result = await handleResponse<ListResult<Company>>(await fetch(`${API_BASE}/companies?includeInactive=true`));
+    return result.items;
   },
-  getCompany: async (id: string): Promise<Company> => {
-    const res = await fetch(`${API_BASE}/companies/${id}`);
-    return handleResponse<Company>(res);
-  },
-  createCompany: async (input: CreateCompanyInput): Promise<Company> => {
-    const res = await fetch(`${API_BASE}/companies`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    return handleResponse<Company>(res);
-  },
-  updateCompany: async (id: string, input: UpdateCompanyInput): Promise<Company> => {
-    const res = await fetch(`${API_BASE}/companies/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    return handleResponse<Company>(res);
-  },
-  toggleCompanyActive: async (id: string, is_active: boolean): Promise<Company> => {
-    return organizationApi.updateCompany(id, { is_active });
-  },
+  getCompany: async (id: string): Promise<Company> =>
+    handleResponse<Company>(await fetch(`${API_BASE}/companies/${encodeURIComponent(id)}`)),
+  createCompany: async (input: CreateCompanyInput): Promise<Company> =>
+    handleResponse<Company>(
+      await fetch(`${API_BASE}/companies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      }),
+    ),
+  updateCompany: async (id: string, input: UpdateCompanyInput): Promise<Company> =>
+    handleResponse<Company>(
+      await fetch(`${API_BASE}/companies/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      }),
+    ),
 
-  // Branches
-  getBranches: async (companyId?: string): Promise<Branch[]> => {
-    const query = companyId ? `?company_id=${encodeURIComponent(companyId)}` : '';
-    const res = await fetch(`${API_BASE}/branches${query}`);
-    return handleResponse<Branch[]>(res);
-  },
-  getBranch: async (id: string): Promise<Branch> => {
-    const res = await fetch(`${API_BASE}/branches/${id}`);
-    return handleResponse<Branch>(res);
+  getBranches: async (companyId: string): Promise<Branch[]> => {
+    const result = await handleResponse<ListResult<Branch>>(
+      await fetch(`${companyPath(companyId, 'branches')}?includeInactive=true`),
+    );
+    return result.items;
   },
   createBranch: async (input: CreateBranchInput): Promise<Branch> => {
-    const res = await fetch(`${API_BASE}/branches`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    return handleResponse<Branch>(res);
+    const { companyId, ...body } = input;
+    return handleResponse<Branch>(
+      await fetch(companyPath(companyId, 'branches'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    );
   },
-  updateBranch: async (id: string, input: UpdateBranchInput): Promise<Branch> => {
-    const res = await fetch(`${API_BASE}/branches/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    return handleResponse<Branch>(res);
-  },
-  toggleBranchActive: async (id: string, is_active: boolean): Promise<Branch> => {
-    return organizationApi.updateBranch(id, { is_active });
-  },
+  updateBranch: async (
+    companyId: string,
+    id: string,
+    input: UpdateBranchInput,
+  ): Promise<Branch> =>
+    handleResponse<Branch>(
+      await fetch(`${companyPath(companyId, 'branches')}/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      }),
+    ),
 
-  // Departments
-  getDepartments: async (companyId?: string): Promise<Department[]> => {
-    const query = companyId ? `?company_id=${encodeURIComponent(companyId)}` : '';
-    const res = await fetch(`${API_BASE}/departments${query}`);
-    return handleResponse<Department[]>(res);
-  },
-  getDepartment: async (id: string): Promise<Department> => {
-    const res = await fetch(`${API_BASE}/departments/${id}`);
-    return handleResponse<Department>(res);
+  getDepartments: async (companyId: string): Promise<Department[]> => {
+    const result = await handleResponse<ListResult<Department>>(
+      await fetch(`${companyPath(companyId, 'departments')}?includeInactive=true`),
+    );
+    return result.items;
   },
   createDepartment: async (input: CreateDepartmentInput): Promise<Department> => {
-    const res = await fetch(`${API_BASE}/departments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    return handleResponse<Department>(res);
+    const { companyId, ...body } = input;
+    return handleResponse<Department>(
+      await fetch(companyPath(companyId, 'departments'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    );
   },
-  updateDepartment: async (id: string, input: UpdateDepartmentInput): Promise<Department> => {
-    const res = await fetch(`${API_BASE}/departments/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    return handleResponse<Department>(res);
-  },
-  toggleDepartmentActive: async (id: string, is_active: boolean): Promise<Department> => {
-    return organizationApi.updateDepartment(id, { is_active });
-  },
+  updateDepartment: async (
+    companyId: string,
+    id: string,
+    input: UpdateDepartmentInput,
+  ): Promise<Department> =>
+    handleResponse<Department>(
+      await fetch(`${companyPath(companyId, 'departments')}/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      }),
+    ),
 
-  // Cost Centers
-  getCostCenters: async (companyId?: string): Promise<CostCenter[]> => {
-    const query = companyId ? `?company_id=${encodeURIComponent(companyId)}` : '';
-    const res = await fetch(`${API_BASE}/cost-centers${query}`);
-    return handleResponse<CostCenter[]>(res);
-  },
-  getCostCenter: async (id: string): Promise<CostCenter> => {
-    const res = await fetch(`${API_BASE}/cost-centers/${id}`);
-    return handleResponse<CostCenter>(res);
+  getCostCenters: async (companyId: string): Promise<CostCenter[]> => {
+    const result = await handleResponse<ListResult<CostCenter>>(
+      await fetch(`${companyPath(companyId, 'cost-centers')}?includeInactive=true`),
+    );
+    return result.items;
   },
   createCostCenter: async (input: CreateCostCenterInput): Promise<CostCenter> => {
-    const res = await fetch(`${API_BASE}/cost-centers`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    return handleResponse<CostCenter>(res);
+    const { companyId, ...body } = input;
+    return handleResponse<CostCenter>(
+      await fetch(companyPath(companyId, 'cost-centers'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    );
   },
-  updateCostCenter: async (id: string, input: UpdateCostCenterInput): Promise<CostCenter> => {
-    const res = await fetch(`${API_BASE}/cost-centers/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    return handleResponse<CostCenter>(res);
-  },
-  toggleCostCenterActive: async (id: string, is_active: boolean): Promise<CostCenter> => {
-    return organizationApi.updateCostCenter(id, { is_active });
-  },
+  updateCostCenter: async (
+    companyId: string,
+    id: string,
+    input: UpdateCostCenterInput,
+  ): Promise<CostCenter> =>
+    handleResponse<CostCenter>(
+      await fetch(`${companyPath(companyId, 'cost-centers')}/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      }),
+    ),
 };

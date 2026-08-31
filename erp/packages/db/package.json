@@ -17,7 +17,7 @@
     "studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "drizzle-orm": "^0.35.3",
+    "drizzle-orm": "^0.36.0",
     "postgres": "^3.4.5",
     "@open-erp/config": "workspace:*"
   },

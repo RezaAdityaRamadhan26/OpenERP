@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import {
-  useBranches,
   useCompanies,
   useCreateDepartment,
   useDepartments,
@@ -8,13 +8,13 @@ import {
   useUpdateDepartment,
 } from './hooks.js';
 import type { Department } from './types.js';
-import { type DepartmentFormData, departmentSchema } from './validation.js';
+import { type ScopedEntityFormData, scopedEntitySchema } from './validation.js';
 
 export function DepartmentsPage() {
   const { data: companies } = useCompanies();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
 
-  const effectiveCompanyId = selectedCompanyId || (companies && companies[0]?.id) || '';
+  const effectiveCompanyId = selectedCompanyId || companies?.[0]?.id || '';
 
   const {
     data: departments,
@@ -22,7 +22,6 @@ export function DepartmentsPage() {
     error,
     refetch,
   } = useDepartments(effectiveCompanyId || undefined);
-  const { data: branches } = useBranches(effectiveCompanyId || undefined);
 
   const createMutation = useCreateDepartment();
   const updateMutation = useUpdateDepartment();
@@ -30,13 +29,9 @@ export function DepartmentsPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
-  const [formData, setFormData] = useState<DepartmentFormData>({
-    company_id: '',
-    branch_id: '',
-    parent_id: '',
+  const [formData, setFormData] = useState<ScopedEntityFormData>({
     code: '',
     name: '',
-    is_active: true,
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -45,12 +40,8 @@ export function DepartmentsPage() {
   const openCreateModal = () => {
     setEditingDepartment(null);
     setFormData({
-      company_id: effectiveCompanyId,
-      branch_id: '',
-      parent_id: '',
       code: '',
       name: '',
-      is_active: true,
     });
     setFieldErrors({});
     setGeneralError(null);
@@ -60,12 +51,8 @@ export function DepartmentsPage() {
   const openEditModal = (dept: Department) => {
     setEditingDepartment(dept);
     setFormData({
-      company_id: dept.company_id,
-      branch_id: dept.branch_id || '',
-      parent_id: dept.parent_id || '',
       code: dept.code,
       name: dept.name,
-      is_active: dept.is_active,
     });
     setFieldErrors({});
     setGeneralError(null);
@@ -84,7 +71,7 @@ export function DepartmentsPage() {
     setGeneralError(null);
     setFieldErrors({});
 
-    const parseResult = departmentSchema.safeParse(formData);
+    const parseResult = scopedEntitySchema.safeParse(formData);
     if (!parseResult.success) {
       const errors: Record<string, string> = {};
       for (const issue of parseResult.error.issues) {
@@ -100,24 +87,18 @@ export function DepartmentsPage() {
     try {
       if (editingDepartment) {
         await updateMutation.mutateAsync({
+          companyId: effectiveCompanyId,
           id: editingDepartment.id,
           input: {
-            company_id: parseResult.data.company_id,
-            branch_id: parseResult.data.branch_id || null,
-            parent_id: parseResult.data.parent_id || null,
             name: parseResult.data.name,
-            is_active: parseResult.data.is_active,
           },
         });
         setActionSuccess(`Department "${parseResult.data.name}" updated successfully.`);
       } else {
         await createMutation.mutateAsync({
-          company_id: parseResult.data.company_id,
-          branch_id: parseResult.data.branch_id || null,
-          parent_id: parseResult.data.parent_id || null,
+          companyId: effectiveCompanyId,
           code: parseResult.data.code,
           name: parseResult.data.name,
-          is_active: parseResult.data.is_active,
         });
         setActionSuccess(`Department "${parseResult.data.name}" created successfully.`);
       }
@@ -131,10 +112,11 @@ export function DepartmentsPage() {
   const handleToggleActive = async (dept: Department) => {
     try {
       await toggleActiveMutation.mutateAsync({
+        companyId: effectiveCompanyId,
         id: dept.id,
-        is_active: !dept.is_active,
+        input: { isActive: !dept.isActive }
       });
-      setActionSuccess(`Department "${dept.name}" ${dept.is_active ? 'deactivated' : 'activated'}.`);
+      setActionSuccess(`Department "${dept.name}" ${dept.isActive ? 'deactivated' : 'activated'}.`);
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Toggle active state failed');
@@ -242,35 +224,25 @@ export function DepartmentsPage() {
                 <tr>
                   <th className="px-4 py-3">Code</th>
                   <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Branch</th>
-                  <th className="px-4 py-3">Parent Dept</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {departments.map((d) => {
-                  const branch = branches?.find((b) => b.id === d.branch_id);
-                  const parent = departments?.find((p) => p.id === d.parent_id);
                   return (
                     <tr key={d.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3 font-mono font-medium text-slate-900">{d.code}</td>
                       <td className="px-4 py-3 font-medium text-slate-900">{d.name}</td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {branch ? branch.name : <span className="text-slate-400">All / Central</span>}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {parent ? parent.name : <span className="text-slate-400">None</span>}
-                      </td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            d.is_active
+                            d.isActive
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : 'bg-slate-100 text-slate-600 border border-slate-200'
                           }`}
                         >
-                          {d.is_active ? 'Active' : 'Inactive'}
+                          {d.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
@@ -287,7 +259,7 @@ export function DepartmentsPage() {
                           disabled={toggleActiveMutation.isPending}
                           className="text-xs font-medium text-slate-500 hover:text-slate-700 underline disabled:opacity-50"
                         >
-                          {d.is_active ? 'Deactivate' : 'Activate'}
+                          {d.isActive ? 'Deactivate' : 'Activate'}
                         </button>
                       </td>
                     </tr>
@@ -324,70 +296,6 @@ export function DepartmentsPage() {
               )}
 
               <div>
-                <label htmlFor="dept-form-company" className="block text-xs font-medium text-slate-700 mb-1">
-                  Company *
-                </label>
-                <select
-                  id="dept-form-company"
-                  value={formData.company_id}
-                  onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
-                  disabled={Boolean(editingDepartment)}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 disabled:bg-slate-50"
-                >
-                  {companies?.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.code})
-                    </option>
-                  ))}
-                </select>
-                {fieldErrors.company_id && (
-                  <p className="text-xs text-red-600 mt-1">{fieldErrors.company_id}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="dept-form-branch" className="block text-xs font-medium text-slate-700 mb-1">
-                    Branch (Optional)
-                  </label>
-                  <select
-                    id="dept-form-branch"
-                    value={formData.branch_id || ''}
-                    onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  >
-                    <option value="">(All Branches / Central)</option>
-                    {branches?.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name} ({b.code})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="dept-form-parent" className="block text-xs font-medium text-slate-700 mb-1">
-                    Parent Department
-                  </label>
-                  <select
-                    id="dept-form-parent"
-                    value={formData.parent_id || ''}
-                    onChange={(e) => setFormData({ ...formData, parent_id: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  >
-                    <option value="">(Top-level Department)</option>
-                    {departments
-                      ?.filter((d) => !editingDepartment || d.id !== editingDepartment.id)
-                      .map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name} ({d.code})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
                 <label htmlFor="dept-form-code" className="block text-xs font-medium text-slate-700 mb-1">
                   Department Code *
                 </label>
@@ -420,19 +328,6 @@ export function DepartmentsPage() {
                 {fieldErrors.name && (
                   <p className="text-xs text-red-600 mt-1">{fieldErrors.name}</p>
                 )}
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="dept_active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
-                />
-                <label htmlFor="dept_active" className="text-xs text-slate-700">
-                  Active department status
-                </label>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">

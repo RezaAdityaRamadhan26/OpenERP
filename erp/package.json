@@ -19,7 +19,7 @@
     "format": "bunx biome format . --write",
     "format:check": "bunx biome format .",
     "test": "bun test",
-    "test:integration": "bun test src/organization.integration.test.ts",
+    "test:integration": "bun run --filter @open-erp/organization test:integration",
     "db:generate": "bun run --filter @open-erp/db generate",
     "db:migrate": "bun run --filter @open-erp/db migrate",
     "db:studio": "bun run --filter @open-erp/db studio",

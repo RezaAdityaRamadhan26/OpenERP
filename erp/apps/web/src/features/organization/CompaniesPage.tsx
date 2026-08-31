@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import {
   useCompanies,
   useCreateCompany,
@@ -19,12 +20,6 @@ export function CompaniesPage() {
   const [formData, setFormData] = useState<CompanyFormData>({
     code: '',
     name: '',
-    legal_name: '',
-    tax_id: '',
-    currency: 'USD',
-    timezone: 'UTC',
-    fiscal_year_start_month: 1,
-    is_active: true,
   });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
@@ -35,12 +30,6 @@ export function CompaniesPage() {
     setFormData({
       code: '',
       name: '',
-      legal_name: '',
-      tax_id: '',
-      currency: 'USD',
-      timezone: 'UTC',
-      fiscal_year_start_month: 1,
-      is_active: true,
     });
     setFieldErrors({});
     setGeneralError(null);
@@ -52,12 +41,6 @@ export function CompaniesPage() {
     setFormData({
       code: company.code,
       name: company.name,
-      legal_name: company.legal_name || '',
-      tax_id: company.tax_id || '',
-      currency: company.currency,
-      timezone: company.timezone,
-      fiscal_year_start_month: company.fiscal_year_start_month,
-      is_active: company.is_active,
     });
     setFieldErrors({});
     setGeneralError(null);
@@ -95,12 +78,6 @@ export function CompaniesPage() {
           id: editingCompany.id,
           input: {
             name: parseResult.data.name,
-            legal_name: parseResult.data.legal_name || null,
-            tax_id: parseResult.data.tax_id || null,
-            currency: parseResult.data.currency,
-            timezone: parseResult.data.timezone,
-            fiscal_year_start_month: parseResult.data.fiscal_year_start_month,
-            is_active: parseResult.data.is_active,
           },
         });
         setActionSuccess(`Company "${parseResult.data.name}" updated successfully.`);
@@ -108,12 +85,6 @@ export function CompaniesPage() {
         await createMutation.mutateAsync({
           code: parseResult.data.code,
           name: parseResult.data.name,
-          legal_name: parseResult.data.legal_name || null,
-          tax_id: parseResult.data.tax_id || null,
-          currency: parseResult.data.currency,
-          timezone: parseResult.data.timezone,
-          fiscal_year_start_month: parseResult.data.fiscal_year_start_month,
-          is_active: parseResult.data.is_active,
         });
         setActionSuccess(`Company "${parseResult.data.name}" created successfully.`);
       }
@@ -128,10 +99,10 @@ export function CompaniesPage() {
     try {
       await toggleActiveMutation.mutateAsync({
         id: company.id,
-        is_active: !company.is_active,
+        input: { isActive: !company.isActive }
       });
       setActionSuccess(
-        `Company "${company.name}" ${company.is_active ? 'deactivated' : 'activated'}.`,
+        `Company "${company.name}" ${company.isActive ? 'deactivated' : 'activated'}.`,
       );
       setTimeout(() => setActionSuccess(null), 4000);
     } catch (err: unknown) {
@@ -213,8 +184,6 @@ export function CompaniesPage() {
                 <tr>
                   <th className="px-4 py-3">Code</th>
                   <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Currency</th>
-                  <th className="px-4 py-3">Timezone</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
@@ -225,21 +194,16 @@ export function CompaniesPage() {
                     <td className="px-4 py-3 font-mono font-medium text-slate-900">{c.code}</td>
                     <td className="px-4 py-3 font-medium text-slate-900">
                       <div>{c.name}</div>
-                      {c.legal_name && (
-                        <div className="text-xs text-slate-400">{c.legal_name}</div>
-                      )}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{c.currency}</td>
-                    <td className="px-4 py-3 text-slate-600">{c.timezone}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          c.is_active
+                          c.isActive
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}
                       >
-                        {c.is_active ? 'Active' : 'Inactive'}
+                        {c.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right space-x-2">
@@ -256,7 +220,7 @@ export function CompaniesPage() {
                         disabled={toggleActiveMutation.isPending}
                         className="text-xs font-medium text-slate-500 hover:text-slate-700 underline disabled:opacity-50"
                       >
-                        {c.is_active ? 'Deactivate' : 'Activate'}
+                        {c.isActive ? 'Deactivate' : 'Activate'}
                       </button>
                     </td>
                   </tr>
@@ -324,119 +288,6 @@ export function CompaniesPage() {
                 {fieldErrors.name && (
                   <p className="text-xs text-red-600 mt-1">{fieldErrors.name}</p>
                 )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="company-legal-name" className="block text-xs font-medium text-slate-700 mb-1">
-                    Legal Name
-                  </label>
-                  <input
-                    id="company-legal-name"
-                    type="text"
-                    value={formData.legal_name || ''}
-                    onChange={(e) => setFormData({ ...formData, legal_name: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
-                    placeholder="e.g. PT Acme Indonesia"
-                  />
-                  {fieldErrors.legal_name && (
-                    <p className="text-xs text-red-600 mt-1">{fieldErrors.legal_name}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="company-tax-id" className="block text-xs font-medium text-slate-700 mb-1">
-                    Tax ID
-                  </label>
-                  <input
-                    id="company-tax-id"
-                    type="text"
-                    value={formData.tax_id || ''}
-                    onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
-                    placeholder="e.g. 01.234.567.8-901.000"
-                  />
-                  {fieldErrors.tax_id && (
-                    <p className="text-xs text-red-600 mt-1">{fieldErrors.tax_id}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label htmlFor="company-currency" className="block text-xs font-medium text-slate-700 mb-1">
-                    Currency *
-                  </label>
-                  <input
-                    id="company-currency"
-                    type="text"
-                    maxLength={3}
-                    value={formData.currency}
-                    onChange={(e) =>
-                      setFormData({ ...formData, currency: e.target.value.toUpperCase() })
-                    }
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 font-mono"
-                    placeholder="USD"
-                  />
-                  {fieldErrors.currency && (
-                    <p className="text-xs text-red-600 mt-1">{fieldErrors.currency}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="company-timezone" className="block text-xs font-medium text-slate-700 mb-1">
-                    Timezone *
-                  </label>
-                  <input
-                    id="company-timezone"
-                    type="text"
-                    value={formData.timezone}
-                    onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
-                    placeholder="UTC or Asia/Jakarta"
-                  />
-                  {fieldErrors.timezone && (
-                    <p className="text-xs text-red-600 mt-1">{fieldErrors.timezone}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="company-fiscal-month" className="block text-xs font-medium text-slate-700 mb-1">
-                    Fiscal Start Month
-                  </label>
-                  <input
-                    id="company-fiscal-month"
-                    type="number"
-                    min={1}
-                    max={12}
-                    value={formData.fiscal_year_start_month}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        fiscal_year_start_month: Number(e.target.value) || 1,
-                      })
-                    }
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  />
-                  {fieldErrors.fiscal_year_start_month && (
-                    <p className="text-xs text-red-600 mt-1">
-                      {fieldErrors.fiscal_year_start_month}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="company_active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
-                />
-                <label htmlFor="company_active" className="text-xs text-slate-700">
-                  Active company status
-                </label>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
