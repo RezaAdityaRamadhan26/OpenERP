@@ -63,11 +63,14 @@ cp .env.example .env
 
 Update `DATABASE_URL` for your local PostgreSQL instance. For Organization repository integration tests, also create the separate test database configured by `TEST_DATABASE_URL`. Never point tests at a production database.
 
-### 3. Create the database
+### 3. Create the databases
 
 ```sql
 CREATE DATABASE open_erp;
+CREATE DATABASE open_erp_test;
 ```
+
+`DATABASE_URL` targets `open_erp`; `TEST_DATABASE_URL` targets the isolated `open_erp_test` database.
 
 ### 4. Generate and run migrations
 
@@ -140,6 +143,7 @@ docs/           Product, architecture, and development documentation
 - [Design System](docs/DESIGN_SYSTEM.md)
 - [Roadmap](docs/ROADMAP.md)
 - [TASK-000 — Project Foundation](docs/TASK-000-project-foundation.md)
+- [TASK-001 — Organization Foundation](docs/tasks/TASK-001-organization-foundation.md)
 
 ## Architecture
 
