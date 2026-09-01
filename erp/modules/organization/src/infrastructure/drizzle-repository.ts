@@ -15,7 +15,7 @@ import type {
   UpdateCompanyData,
   UpdateScopedEntityData,
 } from '../domain/repository.js';
-import { OrganizationNotFoundError } from '../domain/errors.js';
+import { OrganizationNotFoundError, OrganizationPersistenceError } from '../domain/errors.js';
 
 export class DrizzleOrganizationRepository implements OrganizationRepository {
   constructor(private readonly db: PostgresJsDatabase<typeof schema>) {}
@@ -25,20 +25,27 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
   // ---------------------------------------------------------------------------
 
   async createCompany(data: CreateCompanyData): Promise<Company> {
-    const [row] = await this.db
-      .insert(schema.companies)
-      .values({
-        code: data.code,
-        name: data.name,
-        is_active: data.isActive ?? true,
-      })
-      .returning();
+    try {
+      const [row] = await this.db
+        .insert(schema.companies)
+        .values({
+          code: data.code,
+          name: data.name,
+          is_active: data.isActive ?? true,
+        })
+        .returning();
 
-    if (!row) {
-      throw new Error('Failed to create company');
+      if (!row) {
+        throw new OrganizationPersistenceError('Failed to create company', 'INSERT_FAILED');
+      }
+
+      return this.mapCompany(row);
+    } catch (err: unknown) {
+      if (err instanceof Error && 'code' in err && err.code === '23505') {
+        throw new Error('unique constraint');
+      }
+      throw err;
     }
-
-    return this.mapCompany(row);
   }
 
   async findCompanyById(id: string): Promise<Company | null> {
@@ -71,23 +78,25 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
       ? undefined
       : eq(schema.companies.is_active, true);
 
-    const [totalRow] = await this.db
-      .select({ val: count() })
-      .from(schema.companies)
-      .where(condition);
+    return this.db.transaction(async (tx) => {
+      const [totalRow] = await tx
+        .select({ val: count() })
+        .from(schema.companies)
+        .where(condition);
 
-    const rows = await this.db
-      .select()
-      .from(schema.companies)
-      .where(condition)
-      .orderBy(desc(schema.companies.created_at))
-      .limit(limit)
-      .offset(offset);
+      const rows = await tx
+        .select()
+        .from(schema.companies)
+        .where(condition)
+        .orderBy(desc(schema.companies.created_at))
+        .limit(limit)
+        .offset(offset);
 
-    return {
-      items: rows.map((r) => this.mapCompany(r)),
-      total: totalRow ? Number(totalRow.val) : 0,
-    };
+      return {
+        items: rows.map((r) => this.mapCompany(r)),
+        total: totalRow ? Number(totalRow.val) : 0,
+      };
+    });
   }
 
   async updateCompany(id: string, data: UpdateCompanyData): Promise<Company> {
@@ -116,21 +125,28 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
   // ---------------------------------------------------------------------------
 
   async createBranch(data: CreateScopedEntityData): Promise<Branch> {
-    const [row] = await this.db
-      .insert(schema.branches)
-      .values({
-        company_id: data.companyId,
-        code: data.code,
-        name: data.name,
-        is_active: data.isActive ?? true,
-      })
-      .returning();
+    try {
+      const [row] = await this.db
+        .insert(schema.branches)
+        .values({
+          company_id: data.companyId,
+          code: data.code,
+          name: data.name,
+          is_active: data.isActive ?? true,
+        })
+        .returning();
 
-    if (!row) {
-      throw new Error('Failed to create branch');
+      if (!row) {
+        throw new OrganizationPersistenceError('Failed to create branch', 'INSERT_FAILED');
+      }
+
+      return this.mapBranch(row);
+    } catch (err: unknown) {
+      if (err instanceof Error && 'code' in err && err.code === '23505') {
+        throw new Error('unique constraint');
+      }
+      throw err;
     }
-
-    return this.mapBranch(row);
   }
 
   async findBranchById(companyId: string, id: string): Promise<Branch | null> {
@@ -180,23 +196,25 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
           eq(schema.branches.is_active, true),
         );
 
-    const [totalRow] = await this.db
-      .select({ val: count() })
-      .from(schema.branches)
-      .where(condition);
+    return this.db.transaction(async (tx) => {
+      const [totalRow] = await tx
+        .select({ val: count() })
+        .from(schema.branches)
+        .where(condition);
 
-    const rows = await this.db
-      .select()
-      .from(schema.branches)
-      .where(condition)
-      .orderBy(desc(schema.branches.created_at))
-      .limit(limit)
-      .offset(offset);
+      const rows = await tx
+        .select()
+        .from(schema.branches)
+        .where(condition)
+        .orderBy(desc(schema.branches.created_at))
+        .limit(limit)
+        .offset(offset);
 
-    return {
-      items: rows.map((r) => this.mapBranch(r)),
-      total: totalRow ? Number(totalRow.val) : 0,
-    };
+      return {
+        items: rows.map((r) => this.mapBranch(r)),
+        total: totalRow ? Number(totalRow.val) : 0,
+      };
+    });
   }
 
   async updateBranch(
@@ -234,21 +252,28 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
   // ---------------------------------------------------------------------------
 
   async createDepartment(data: CreateScopedEntityData): Promise<Department> {
-    const [row] = await this.db
-      .insert(schema.departments)
-      .values({
-        company_id: data.companyId,
-        code: data.code,
-        name: data.name,
-        is_active: data.isActive ?? true,
-      })
-      .returning();
+    try {
+      const [row] = await this.db
+        .insert(schema.departments)
+        .values({
+          company_id: data.companyId,
+          code: data.code,
+          name: data.name,
+          is_active: data.isActive ?? true,
+        })
+        .returning();
 
-    if (!row) {
-      throw new Error('Failed to create department');
+      if (!row) {
+        throw new OrganizationPersistenceError('Failed to create department', 'INSERT_FAILED');
+      }
+
+      return this.mapDepartment(row);
+    } catch (err: unknown) {
+      if (err instanceof Error && 'code' in err && err.code === '23505') {
+        throw new Error('unique constraint');
+      }
+      throw err;
     }
-
-    return this.mapDepartment(row);
   }
 
   async findDepartmentById(
@@ -301,23 +326,25 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
           eq(schema.departments.is_active, true),
         );
 
-    const [totalRow] = await this.db
-      .select({ val: count() })
-      .from(schema.departments)
-      .where(condition);
+    return this.db.transaction(async (tx) => {
+      const [totalRow] = await tx
+        .select({ val: count() })
+        .from(schema.departments)
+        .where(condition);
 
-    const rows = await this.db
-      .select()
-      .from(schema.departments)
-      .where(condition)
-      .orderBy(desc(schema.departments.created_at))
-      .limit(limit)
-      .offset(offset);
+      const rows = await tx
+        .select()
+        .from(schema.departments)
+        .where(condition)
+        .orderBy(desc(schema.departments.created_at))
+        .limit(limit)
+        .offset(offset);
 
-    return {
-      items: rows.map((r) => this.mapDepartment(r)),
-      total: totalRow ? Number(totalRow.val) : 0,
-    };
+      return {
+        items: rows.map((r) => this.mapDepartment(r)),
+        total: totalRow ? Number(totalRow.val) : 0,
+      };
+    });
   }
 
   async updateDepartment(
@@ -355,21 +382,28 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
   // ---------------------------------------------------------------------------
 
   async createCostCenter(data: CreateScopedEntityData): Promise<CostCenter> {
-    const [row] = await this.db
-      .insert(schema.costCenters)
-      .values({
-        company_id: data.companyId,
-        code: data.code,
-        name: data.name,
-        is_active: data.isActive ?? true,
-      })
-      .returning();
+    try {
+      const [row] = await this.db
+        .insert(schema.costCenters)
+        .values({
+          company_id: data.companyId,
+          code: data.code,
+          name: data.name,
+          is_active: data.isActive ?? true,
+        })
+        .returning();
 
-    if (!row) {
-      throw new Error('Failed to create cost center');
+      if (!row) {
+        throw new OrganizationPersistenceError('Failed to create cost center', 'INSERT_FAILED');
+      }
+
+      return this.mapCostCenter(row);
+    } catch (err: unknown) {
+      if (err instanceof Error && 'code' in err && err.code === '23505') {
+        throw new Error('unique constraint');
+      }
+      throw err;
     }
-
-    return this.mapCostCenter(row);
   }
 
   async findCostCenterById(
@@ -422,23 +456,25 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
           eq(schema.costCenters.is_active, true),
         );
 
-    const [totalRow] = await this.db
-      .select({ val: count() })
-      .from(schema.costCenters)
-      .where(condition);
+    return this.db.transaction(async (tx) => {
+      const [totalRow] = await tx
+        .select({ val: count() })
+        .from(schema.costCenters)
+        .where(condition);
 
-    const rows = await this.db
-      .select()
-      .from(schema.costCenters)
-      .where(condition)
-      .orderBy(desc(schema.costCenters.created_at))
-      .limit(limit)
-      .offset(offset);
+      const rows = await tx
+        .select()
+        .from(schema.costCenters)
+        .where(condition)
+        .orderBy(desc(schema.costCenters.created_at))
+        .limit(limit)
+        .offset(offset);
 
-    return {
-      items: rows.map((r) => this.mapCostCenter(r)),
-      total: totalRow ? Number(totalRow.val) : 0,
-    };
+      return {
+        items: rows.map((r) => this.mapCostCenter(r)),
+        total: totalRow ? Number(totalRow.val) : 0,
+      };
+    });
   }
 
   async updateCostCenter(

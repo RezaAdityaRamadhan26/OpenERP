@@ -37,16 +37,18 @@ export class OrganizationService {
       throw new OrganizationValidationError('Company name cannot be empty');
     }
 
-    const existing = await this.repository.findCompanyByCode(code);
-    if (existing) {
-      throw new DuplicateCodeError('Company', code);
+    try {
+      return await this.repository.createCompany({
+        ...data,
+        code,
+        name,
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('unique constraint')) {
+        throw new DuplicateCodeError('Company', code);
+      }
+      throw err;
     }
-
-    return this.repository.createCompany({
-      ...data,
-      code,
-      name,
-    });
   }
 
   async getCompanyById(id: string): Promise<Company> {
@@ -92,16 +94,18 @@ export class OrganizationService {
       throw new InvalidParentCompanyError(data.companyId);
     }
 
-    const existing = await this.repository.findBranchByCode(data.companyId, code);
-    if (existing) {
-      throw new DuplicateCodeError('Branch', code, data.companyId);
+    try {
+      return await this.repository.createBranch({
+        ...data,
+        code,
+        name,
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('unique constraint')) {
+        throw new DuplicateCodeError('Branch', code, data.companyId);
+      }
+      throw err;
     }
-
-    return this.repository.createBranch({
-      ...data,
-      code,
-      name,
-    });
   }
 
   async getBranchById(companyId: string, id: string): Promise<Branch> {
@@ -151,16 +155,18 @@ export class OrganizationService {
       throw new InvalidParentCompanyError(data.companyId);
     }
 
-    const existing = await this.repository.findDepartmentByCode(data.companyId, code);
-    if (existing) {
-      throw new DuplicateCodeError('Department', code, data.companyId);
+    try {
+      return await this.repository.createDepartment({
+        ...data,
+        code,
+        name,
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('unique constraint')) {
+        throw new DuplicateCodeError('Department', code, data.companyId);
+      }
+      throw err;
     }
-
-    return this.repository.createDepartment({
-      ...data,
-      code,
-      name,
-    });
   }
 
   async getDepartmentById(companyId: string, id: string): Promise<Department> {
@@ -210,16 +216,18 @@ export class OrganizationService {
       throw new InvalidParentCompanyError(data.companyId);
     }
 
-    const existing = await this.repository.findCostCenterByCode(data.companyId, code);
-    if (existing) {
-      throw new DuplicateCodeError('CostCenter', code, data.companyId);
+    try {
+      return await this.repository.createCostCenter({
+        ...data,
+        code,
+        name,
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes('unique constraint')) {
+        throw new DuplicateCodeError('CostCenter', code, data.companyId);
+      }
+      throw err;
     }
-
-    return this.repository.createCostCenter({
-      ...data,
-      code,
-      name,
-    });
   }
 
   async getCostCenterById(companyId: string, id: string): Promise<CostCenter> {

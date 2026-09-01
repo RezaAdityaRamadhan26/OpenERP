@@ -6,6 +6,7 @@ import {
   OrganizationError,
   OrganizationNotFoundError,
   OrganizationValidationError,
+  OrganizationPersistenceError,
 } from '../domain/errors.js';
 import {
   createCompanySchema,
@@ -14,6 +15,8 @@ import {
   updateCompanySchema,
   updateScopedEntitySchema,
 } from './validation.js';
+
+const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export function createOrganizationRouter(service: OrganizationService) {
   const router = new Hono();
@@ -32,8 +35,15 @@ export function createOrganizationRouter(service: OrganizationService) {
     ) {
       return { status: 400 as const, code: err.code, message: err.message };
     }
+    if (err instanceof OrganizationPersistenceError) {
+      return { status: 400 as const, code: err.code, message: err.message };
+    }
     if (err instanceof OrganizationError) {
       return { status: 400 as const, code: err.code, message: err.message };
+    }
+    // Also map SyntaxError to bad request (often means malformed JSON body)
+    if (err instanceof SyntaxError) {
+      return { status: 400 as const, code: 'MALFORMED_JSON', message: 'Malformed JSON payload' };
     }
     throw err;
   }
@@ -74,6 +84,9 @@ export function createOrganizationRouter(service: OrganizationService) {
   router.get('/companies/:id', async (c) => {
     try {
       const id = c.req.param('id');
+      if (!UUID_REGEX.test(id)) {
+        throw new OrganizationValidationError('Invalid Company ID format');
+      }
       const company = await service.getCompanyById(id);
       return c.json({ success: true, data: company });
     } catch (err) {
@@ -88,6 +101,9 @@ export function createOrganizationRouter(service: OrganizationService) {
   router.patch('/companies/:id', async (c) => {
     try {
       const id = c.req.param('id');
+      if (!UUID_REGEX.test(id)) {
+        throw new OrganizationValidationError('Invalid Company ID format');
+      }
       const body = await c.req.json();
       const parsed = updateCompanySchema.parse(body);
       const company = await service.updateCompany(id, parsed);
@@ -108,6 +124,9 @@ export function createOrganizationRouter(service: OrganizationService) {
   router.post('/companies/:companyId/branches', async (c) => {
     try {
       const companyId = c.req.param('companyId');
+      if (!UUID_REGEX.test(companyId)) {
+        throw new OrganizationValidationError('Invalid Company ID format');
+      }
       const body = await c.req.json();
       const parsed = createScopedEntitySchema.parse(body);
       const branch = await service.createBranch({ ...parsed, companyId });
@@ -124,6 +143,9 @@ export function createOrganizationRouter(service: OrganizationService) {
   router.get('/companies/:companyId/branches', async (c) => {
     try {
       const companyId = c.req.param('companyId');
+      if (!UUID_REGEX.test(companyId)) {
+        throw new OrganizationValidationError('Invalid Company ID format');
+      }
       const query = listQuerySchema.parse(c.req.query());
       const result = await service.listBranches(companyId, query);
       return c.json({ success: true, data: result });
@@ -140,6 +162,9 @@ export function createOrganizationRouter(service: OrganizationService) {
     try {
       const companyId = c.req.param('companyId');
       const id = c.req.param('id');
+      if (!UUID_REGEX.test(companyId) || !UUID_REGEX.test(id)) {
+        throw new OrganizationValidationError('Invalid ID format');
+      }
       const branch = await service.getBranchById(companyId, id);
       return c.json({ success: true, data: branch });
     } catch (err) {
@@ -155,6 +180,9 @@ export function createOrganizationRouter(service: OrganizationService) {
     try {
       const companyId = c.req.param('companyId');
       const id = c.req.param('id');
+      if (!UUID_REGEX.test(companyId) || !UUID_REGEX.test(id)) {
+        throw new OrganizationValidationError('Invalid ID format');
+      }
       const body = await c.req.json();
       const parsed = updateScopedEntitySchema.parse(body);
       const branch = await service.updateBranch(companyId, id, parsed);
@@ -175,6 +203,9 @@ export function createOrganizationRouter(service: OrganizationService) {
   router.post('/companies/:companyId/departments', async (c) => {
     try {
       const companyId = c.req.param('companyId');
+      if (!UUID_REGEX.test(companyId)) {
+        throw new OrganizationValidationError('Invalid Company ID format');
+      }
       const body = await c.req.json();
       const parsed = createScopedEntitySchema.parse(body);
       const department = await service.createDepartment({
@@ -194,6 +225,9 @@ export function createOrganizationRouter(service: OrganizationService) {
   router.get('/companies/:companyId/departments', async (c) => {
     try {
       const companyId = c.req.param('companyId');
+      if (!UUID_REGEX.test(companyId)) {
+        throw new OrganizationValidationError('Invalid Company ID format');
+      }
       const query = listQuerySchema.parse(c.req.query());
       const result = await service.listDepartments(companyId, query);
       return c.json({ success: true, data: result });
@@ -210,6 +244,9 @@ export function createOrganizationRouter(service: OrganizationService) {
     try {
       const companyId = c.req.param('companyId');
       const id = c.req.param('id');
+      if (!UUID_REGEX.test(companyId) || !UUID_REGEX.test(id)) {
+        throw new OrganizationValidationError('Invalid ID format');
+      }
       const department = await service.getDepartmentById(companyId, id);
       return c.json({ success: true, data: department });
     } catch (err) {
@@ -225,6 +262,9 @@ export function createOrganizationRouter(service: OrganizationService) {
     try {
       const companyId = c.req.param('companyId');
       const id = c.req.param('id');
+      if (!UUID_REGEX.test(companyId) || !UUID_REGEX.test(id)) {
+        throw new OrganizationValidationError('Invalid ID format');
+      }
       const body = await c.req.json();
       const parsed = updateScopedEntitySchema.parse(body);
       const department = await service.updateDepartment(companyId, id, parsed);
@@ -245,6 +285,9 @@ export function createOrganizationRouter(service: OrganizationService) {
   router.post('/companies/:companyId/cost-centers', async (c) => {
     try {
       const companyId = c.req.param('companyId');
+      if (!UUID_REGEX.test(companyId)) {
+        throw new OrganizationValidationError('Invalid Company ID format');
+      }
       const body = await c.req.json();
       const parsed = createScopedEntitySchema.parse(body);
       const costCenter = await service.createCostCenter({
@@ -264,6 +307,9 @@ export function createOrganizationRouter(service: OrganizationService) {
   router.get('/companies/:companyId/cost-centers', async (c) => {
     try {
       const companyId = c.req.param('companyId');
+      if (!UUID_REGEX.test(companyId)) {
+        throw new OrganizationValidationError('Invalid Company ID format');
+      }
       const query = listQuerySchema.parse(c.req.query());
       const result = await service.listCostCenters(companyId, query);
       return c.json({ success: true, data: result });
@@ -280,6 +326,9 @@ export function createOrganizationRouter(service: OrganizationService) {
     try {
       const companyId = c.req.param('companyId');
       const id = c.req.param('id');
+      if (!UUID_REGEX.test(companyId) || !UUID_REGEX.test(id)) {
+        throw new OrganizationValidationError('Invalid ID format');
+      }
       const costCenter = await service.getCostCenterById(companyId, id);
       return c.json({ success: true, data: costCenter });
     } catch (err) {
@@ -295,6 +344,9 @@ export function createOrganizationRouter(service: OrganizationService) {
     try {
       const companyId = c.req.param('companyId');
       const id = c.req.param('id');
+      if (!UUID_REGEX.test(companyId) || !UUID_REGEX.test(id)) {
+        throw new OrganizationValidationError('Invalid ID format');
+      }
       const body = await c.req.json();
       const parsed = updateScopedEntitySchema.parse(body);
       const costCenter = await service.updateCostCenter(companyId, id, parsed);

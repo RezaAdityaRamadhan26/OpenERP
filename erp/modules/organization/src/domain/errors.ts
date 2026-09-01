@@ -41,3 +41,10 @@ export class InvalidParentCompanyError extends OrganizationError {
     this.name = 'InvalidParentCompanyError';
   }
 }
+
+export class OrganizationPersistenceError extends OrganizationError {
+  constructor(message: string, code: string) {
+    super(message, code);
+    this.name = 'OrganizationPersistenceError';
+  }
+}
