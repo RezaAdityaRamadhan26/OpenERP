@@ -12,6 +12,7 @@ import type {
   UpdateCompanyData,
   UpdateScopedEntityData,
 } from '@open-erp/organization';
+import { DuplicateCodeError } from '@open-erp/organization';
 
 class MockOrganizationRepository implements OrganizationRepository {
   companies: Company[] = [];
@@ -260,7 +261,17 @@ describe('Organization API Routes', () => {
   });
 
   test('POST /api/v1/companies - duplicate code returns 409', async () => {
-    const res = await app.request('/api/v1/companies', {
+    // Override the mock to simulate the duplicate error thrown by Postgres integration
+    const duplicateApp = createApp({
+      organizationRepository: {
+        ...repo,
+        createCompany: async () => {
+          throw new DuplicateCodeError('Company', 'ACME');
+        }
+      } as unknown as OrganizationRepository
+    });
+
+    const res = await duplicateApp.request('/api/v1/companies', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -279,7 +290,13 @@ describe('Organization API Routes', () => {
   });
 
   test('GET /api/v1/companies - lists companies', async () => {
-    const res = await app.request('/api/v1/companies');
+    // Manually add one item into the repo to avoid relying on prior test state
+    // since the duplicate mock was decoupled above.
+    const getRepo = new MockOrganizationRepository();
+    await getRepo.createCompany({ code: 'ACME2', name: 'Acme 2' });
+    const getApp = createApp({ organizationRepository: getRepo });
+
+    const res = await getApp.request('/api/v1/companies');
     expect(res.status).toBe(200);
     const json = (await res.json()) as {
       success: boolean;
