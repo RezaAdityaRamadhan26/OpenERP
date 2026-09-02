@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "modules/*"
   ],
   "scripts": {
     "dev": "bun run --filter '*' dev",
@@ -17,7 +18,8 @@
     "lint:fix": "bun run --filter '*' lint:fix",
     "format": "bunx biome format . --write",
     "format:check": "bunx biome format .",
-    "test": "bun run --filter '*' test",
+    "test": "bun test",
+    "test:integration": "bun run --filter @open-erp/organization test:integration",
     "db:generate": "bun run --filter @open-erp/db generate",
     "db:migrate": "bun run --filter @open-erp/db migrate",
     "db:studio": "bun run --filter @open-erp/db studio",

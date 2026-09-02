@@ -61,13 +61,16 @@ Copy the example file:
 cp .env.example .env
 ```
 
-Update `DATABASE_URL` for your local PostgreSQL instance.
+Update `DATABASE_URL` for your local PostgreSQL instance. For Organization repository integration tests, also create the separate test database configured by `TEST_DATABASE_URL`. Never point tests at a production database.
 
-### 3. Create the database
+### 3. Create the databases
 
 ```sql
 CREATE DATABASE open_erp;
+CREATE DATABASE open_erp_test;
 ```
+
+`DATABASE_URL` targets `open_erp`; `TEST_DATABASE_URL` targets the isolated `open_erp_test` database.
 
 ### 4. Generate and run migrations
 
@@ -110,7 +113,8 @@ The Vite development server proxies `/api` requests to the API server.
 | `bun run lint:fix` | Fix lint issues |
 | `bun run format` | Format the repository |
 | `bun run format:check` | Check formatting |
-| `bun run test` | Run all tests |
+| `bun run test` | Run all unit and API tests |
+| `bun run test:integration` | Run PostgreSQL integration tests using `TEST_DATABASE_URL` |
 | `bun run check` | Run format, lint, typecheck, and tests |
 | `bun run db:generate` | Generate Drizzle migrations |
 | `bun run db:migrate` | Apply database migrations |
@@ -139,6 +143,7 @@ docs/           Product, architecture, and development documentation
 - [Design System](docs/DESIGN_SYSTEM.md)
 - [Roadmap](docs/ROADMAP.md)
 - [TASK-000 — Project Foundation](docs/TASK-000-project-foundation.md)
+- [TASK-001 — Organization Foundation](docs/tasks/TASK-001-organization-foundation.md)
 
 ## Architecture
 
@@ -155,6 +160,12 @@ infrastructure
 ```
 
 Foundation packages remain small. Business modules will be created only when their roadmap milestone begins.
+
+## Organization Foundation
+
+TASK-001 adds company-scoped management for companies, branches, departments, and cost centers through `/api/v1`. The web application provides minimal management screens for these resources. Child-resource requests require explicit company scope, records are activated/deactivated rather than deleted, and business codes are protected by database constraints.
+
+Organization endpoints are temporarily unauthenticated during this milestone. Authentication and authorization belong to TASK-002; do not deploy these endpoints publicly before IAM enforcement is added.
 
 ## Contributing
 

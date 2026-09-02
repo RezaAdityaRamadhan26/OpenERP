@@ -5,7 +5,7 @@ const originalDatabaseUrl = process.env.DATABASE_URL;
 
 afterEach(() => {
   if (originalDatabaseUrl === undefined) {
-    delete process.env.DATABASE_URL;
+    process.env.DATABASE_URL = undefined;
   } else {
     process.env.DATABASE_URL = originalDatabaseUrl;
   }

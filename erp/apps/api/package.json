@@ -17,7 +17,8 @@
     "zod": "^3.23.8",
     "@open-erp/config": "workspace:*",
     "@open-erp/shared": "workspace:*",
-    "@open-erp/db": "workspace:*"
+    "@open-erp/db": "workspace:*",
+    "@open-erp/organization": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
